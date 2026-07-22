@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Temperatura Cameretta</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="dashboard">
+    <header>
+      <p class="eyebrow">Casa Luciano</p>
+      <h1>Temperatura cameretta</h1>
+      <p class="subtitle">Dati aggiornati automaticamente da Firebase</p>
+    </header>
+
+    <section class="cards">
+      <article class="card">
+        <div class="icon">🌡️</div>
+        <div>
+          <p class="label">Temperatura</p>
+          <p class="value"><span id="temperatura">--</span><span class="unit"> °C</span></p>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="icon">💧</div>
+        <div>
+          <p class="label">Umidità</p>
+          <p class="value"><span id="umidita">--</span><span class="unit"> %</span></p>
+        </div>
+      </article>
+    </section>
+
+    <section class="status-card">
+      <div class="status-row">
+        <span id="statusDot" class="status-dot"></span>
+        <strong id="stato">Connessione...</strong>
+      </div>
+
+      <div class="details">
+        <p>Segnale Wi-Fi: <strong><span id="rssi">--</span> dBm</strong></p>
+        <p>Ultimo dato ricevuto: <strong id="ultimoAggiornamento">--</strong></p>
+      </div>
+    </section>
+
+    <p id="errore" class="error" hidden></p>
+  </main>
+
+  <script type="module" src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,160 @@
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  color-scheme: dark;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #0b1020;
+  color: #f7f9ff;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at top left, rgba(82, 113, 255, 0.22), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(0, 214, 170, 0.16), transparent 30%),
+    #0b1020;
+}
+
+.dashboard {
+  width: min(760px, 100%);
+}
+
+header {
+  margin-bottom: 26px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #8fa5ff;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2rem, 7vw, 3.8rem);
+  line-height: 1.05;
+}
+
+.subtitle {
+  margin: 12px 0 0;
+  color: #aab4cf;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+}
+
+.card,
+.status-card {
+  background: rgba(18, 25, 48, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(16px);
+  border-radius: 24px;
+}
+
+.card {
+  padding: 26px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.icon {
+  font-size: 2.4rem;
+}
+
+.label {
+  margin: 0;
+  color: #aab4cf;
+  font-size: 0.95rem;
+}
+
+.value {
+  margin: 8px 0 0;
+  font-size: clamp(2.2rem, 7vw, 4rem);
+  font-weight: 750;
+  line-height: 1;
+}
+
+.unit {
+  font-size: 0.42em;
+  color: #c5cce0;
+}
+
+.status-card {
+  margin-top: 18px;
+  padding: 24px 26px;
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1.1rem;
+}
+
+.status-dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #f6b73c;
+  box-shadow: 0 0 14px rgba(246, 183, 60, 0.7);
+}
+
+.status-dot.online {
+  background: #22d49a;
+  box-shadow: 0 0 14px rgba(34, 212, 154, 0.75);
+}
+
+.status-dot.offline {
+  background: #ff5d6c;
+  box-shadow: 0 0 14px rgba(255, 93, 108, 0.75);
+}
+
+.details {
+  margin-top: 18px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  color: #aab4cf;
+  flex-wrap: wrap;
+}
+
+.details p {
+  margin: 0;
+}
+
+.details strong {
+  color: #f7f9ff;
+}
+
+.error {
+  margin-top: 16px;
+  color: #ff8d98;
+}
+
+@media (max-width: 620px) {
+  .cards {
+    grid-template-columns: 1fr;
+  }
+
+  .card {
+    padding: 22px;
+  }
+
+  .details {
+    flex-direction: column;
+  }
+}
