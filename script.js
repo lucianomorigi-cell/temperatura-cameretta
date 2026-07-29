@@ -4,7 +4,8 @@ import {
   getDatabase,
   ref,
   onValue,
-  set
+  set,
+  update
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -22,6 +23,12 @@ const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 
 const sensoreRef = ref(database, "dispositivi/cameretta");
+
+const climaRef = ref(
+  database,
+  "dispositivi/cameretta/climatizzatore"
+);
+
 const powerRef = ref(
   database,
   "dispositivi/cameretta/climatizzatore/power"
@@ -34,12 +41,19 @@ const umiditaEl = document.getElementById("umidita");
 const rssiEl = document.getElementById("rssi");
 const statoEl = document.getElementById("stato");
 const statusDotEl = document.getElementById("statusDot");
+
 const ultimoAggiornamentoEl =
   document.getElementById("ultimoAggiornamento");
+
 const erroreEl = document.getElementById("errore");
 
 const powerButtonEl = document.getElementById("powerButton");
 const powerStateEl = document.getElementById("powerState");
+
+const autoModeEl = document.getElementById("autoMode");
+const tempOnEl = document.getElementById("tempOn");
+const tempOffEl = document.getElementById("tempOff");
+const saveSettingsEl = document.getElementById("saveSettings");
 
 let ultimiDati = null;
 let climatizzatoreAcceso = false;
@@ -143,8 +157,31 @@ onValue(
   }
 );
 
-onValue(powerRef, (snapshot) => {
-  climatizzatoreAcceso = snapshot.val() === true;
+onValue(climaRef, (snapshot) => {
+  const dati = snapshot.val();
+
+  if (!dati) {
+    climatizzatoreAcceso = false;
+    autoModeEl.checked = false;
+    tempOnEl.value = 26;
+    tempOffEl.value = 24;
+    aggiornaPulsante();
+    return;
+  }
+
+  climatizzatoreAcceso = dati.power === true;
+  autoModeEl.checked = dati.automatico === true;
+
+  tempOnEl.value =
+    typeof dati.sogliaAccensione === "number"
+      ? dati.sogliaAccensione
+      : 26;
+
+  tempOffEl.value =
+    typeof dati.sogliaSpegnimento === "number"
+      ? dati.sogliaSpegnimento
+      : 24;
+
   aggiornaPulsante();
 });
 
@@ -154,6 +191,39 @@ powerButtonEl.addEventListener("click", async () => {
   } catch (errore) {
     console.error(errore);
     alert("Errore durante l'invio del comando.");
+  }
+});
+
+saveSettingsEl.addEventListener("click", async () => {
+  const sogliaAccensione = parseFloat(tempOnEl.value);
+  const sogliaSpegnimento = parseFloat(tempOffEl.value);
+
+  if (
+    Number.isNaN(sogliaAccensione) ||
+    Number.isNaN(sogliaSpegnimento)
+  ) {
+    alert("Inserisci due temperature valide.");
+    return;
+  }
+
+  if (sogliaSpegnimento >= sogliaAccensione) {
+    alert(
+      "La temperatura di spegnimento deve essere inferiore a quella di accensione."
+    );
+    return;
+  }
+
+  try {
+    await update(climaRef, {
+      automatico: autoModeEl.checked,
+      sogliaAccensione: sogliaAccensione,
+      sogliaSpegnimento: sogliaSpegnimento
+    });
+
+    alert("Impostazioni salvate.");
+  } catch (errore) {
+    console.error(errore);
+    alert("Errore durante il salvataggio.");
   }
 });
 
