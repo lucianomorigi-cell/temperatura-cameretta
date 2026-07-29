@@ -1,66 +1,53 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Temperatura Cameretta</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <main class="dashboard">
-    <header>
-      <p class="eyebrow">Casa Luciano</p>
-      <h1>Temperatura cameretta</h1>
-      <p class="subtitle">Dati aggiornati automaticamente da Firebase</p>
-    </header>
+<section class="status-card">
+  <h2>Climatizzatore</h2>
 
-    <section class="cards">
-      <article class="card">
-        <div class="icon">🌡️</div>
-        <div>
-          <p class="label">Temperatura</p>
-          <p class="value">
-            <span id="temperatura">--</span><span class="unit"> °C</span>
-          </p>
-        </div>
-      </article>
+  <div class="details">
+    <p>Stato: <strong id="powerState">SPENTO</strong></p>
+  </div>
 
-      <article class="card">
-        <div class="icon">💧</div>
-        <div>
-          <p class="label">Umidità</p>
-          <p class="value">
-            <span id="umidita">--</span><span class="unit"> %</span>
-          </p>
-        </div>
-      </article>
-    </section>
+  <button id="powerButton">ACCENDI</button>
 
-    <section class="status-card">
-      <div class="status-row">
-        <span id="statusDot" class="status-dot"></span>
-        <strong id="stato">Connessione...</strong>
-      </div>
+  <hr style="margin:25px 0;border:1px solid rgba(255,255,255,.08)">
 
-      <div class="details">
-        <p>Segnale Wi-Fi: <strong><span id="rssi">--</span> dBm</strong></p>
-        <p>Ultimo dato ricevuto: <strong id="ultimoAggiornamento">--</strong></p>
-      </div>
-    </section>
+  <h3>Modalità automatica</h3>
 
-    <section class="status-card">
-      <h2>Climatizzatore</h2>
+  <label>
+    <input type="checkbox" id="autoMode">
+    Attiva controllo automatico
+  </label>
 
-      <div class="details">
-        <p>Stato: <strong id="powerState">SPENTO</strong></p>
-      </div>
+  <div style="margin-top:20px">
 
-      <button id="powerButton">ACCENDI</button>
-    </section>
+    <label for="tempOn">Accendi sopra</label><br>
+    <input
+      id="tempOn"
+      type="number"
+      step="0.5"
+      min="15"
+      max="35"
+      value="26">
 
-    <p id="errore" class="error" hidden></p>
-  </main>
+    °C
+  </div>
 
-  <script type="module" src="script.js"></script>
-</body>
-</html>
+  <div style="margin-top:15px">
+
+    <label for="tempOff">Spegni sotto</label><br>
+    <input
+      id="tempOff"
+      type="number"
+      step="0.5"
+      min="15"
+      max="35"
+      value="24">
+
+    °C
+  </div>
+
+  <button
+      id="saveSettings"
+      style="margin-top:25px">
+      SALVA IMPOSTAZIONI
+  </button>
+
+</section>
