@@ -3,7 +3,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/fireba
 import {
   getDatabase,
   ref,
-  onValue
+  onValue,
+  set
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -21,9 +22,11 @@ const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 
 const sensoreRef = ref(database, "dispositivi/cameretta");
+const powerRef = ref(
+  database,
+  "dispositivi/cameretta/climatizzatore/power"
+);
 
-// L'ESP32 invia ogni 30 secondi.
-// Dopo 90 secondi senza nuovi dati viene considerata offline.
 const TEMPO_OFFLINE_MS = 90000;
 
 const temperaturaEl = document.getElementById("temperatura");
@@ -35,7 +38,11 @@ const ultimoAggiornamentoEl =
   document.getElementById("ultimoAggiornamento");
 const erroreEl = document.getElementById("errore");
 
+const powerButtonEl = document.getElementById("powerButton");
+const powerStateEl = document.getElementById("powerState");
+
 let ultimiDati = null;
+let climatizzatoreAcceso = false;
 
 function mostraValori(dati) {
   temperaturaEl.textContent =
@@ -62,17 +69,14 @@ function nascondiValori() {
 
 function mostraOnline() {
   statoEl.textContent = "ESP32 online";
-
   statusDotEl.classList.add("online");
   statusDotEl.classList.remove("offline");
 }
 
 function mostraOffline() {
   statoEl.textContent = "ESP32 offline";
-
   statusDotEl.classList.remove("online");
   statusDotEl.classList.add("offline");
-
   nascondiValori();
 }
 
@@ -100,9 +104,18 @@ function aggiornaStato() {
   }
 }
 
+function aggiornaPulsante() {
+  if (climatizzatoreAcceso) {
+    powerStateEl.textContent = "ACCESO";
+    powerButtonEl.textContent = "SPEGNI";
+  } else {
+    powerStateEl.textContent = "SPENTO";
+    powerButtonEl.textContent = "ACCENDI";
+  }
+}
+
 onValue(
   sensoreRef,
-
   (snapshot) => {
     ultimiDati = snapshot.val();
 
@@ -118,7 +131,6 @@ onValue(
     erroreEl.hidden = true;
     aggiornaStato();
   },
-
   (errore) => {
     console.error(errore);
 
@@ -131,5 +143,18 @@ onValue(
   }
 );
 
-// Controlla ogni 5 secondi se il timestamp è diventato troppo vecchio.
+onValue(powerRef, (snapshot) => {
+  climatizzatoreAcceso = snapshot.val() === true;
+  aggiornaPulsante();
+});
+
+powerButtonEl.addEventListener("click", async () => {
+  try {
+    await set(powerRef, !climatizzatoreAcceso);
+  } catch (errore) {
+    console.error(errore);
+    alert("Errore durante l'invio del comando.");
+  }
+});
+
 setInterval(aggiornaStato, 5000);
