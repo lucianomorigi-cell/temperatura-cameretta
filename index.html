@@ -19,7 +19,9 @@
         <div class="icon">🌡️</div>
         <div>
           <p class="label">Temperatura</p>
-          <p class="value"><span id="temperatura">--</span><span class="unit"> °C</span></p>
+          <p class="value">
+            <span id="temperatura">--</span><span class="unit"> °C</span>
+          </p>
         </div>
       </article>
 
@@ -27,7 +29,9 @@
         <div class="icon">💧</div>
         <div>
           <p class="label">Umidità</p>
-          <p class="value"><span id="umidita">--</span><span class="unit"> %</span></p>
+          <p class="value">
+            <span id="umidita">--</span><span class="unit"> %</span>
+          </p>
         </div>
       </article>
     </section>
@@ -42,6 +46,16 @@
         <p>Segnale Wi-Fi: <strong><span id="rssi">--</span> dBm</strong></p>
         <p>Ultimo dato ricevuto: <strong id="ultimoAggiornamento">--</strong></p>
       </div>
+    </section>
+
+    <section class="status-card">
+      <h2>Climatizzatore</h2>
+
+      <div class="details">
+        <p>Stato: <strong id="powerState">SPENTO</strong></p>
+      </div>
+
+      <button id="powerButton">ACCENDI</button>
     </section>
 
     <p id="errore" class="error" hidden></p>
