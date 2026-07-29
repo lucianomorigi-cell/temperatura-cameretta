@@ -12,20 +12,32 @@
 body {
   margin: 0;
   min-height: 100vh;
-  display: grid;
-  place-items: center;
   padding: 24px;
   background:
-    radial-gradient(circle at top left, rgba(82, 113, 255, 0.22), transparent 34%),
-    radial-gradient(circle at bottom right, rgba(0, 214, 170, 0.16), transparent 30%),
+    radial-gradient(
+      circle at top left,
+      rgba(82, 113, 255, 0.22),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at bottom right,
+      rgba(0, 214, 170, 0.16),
+      transparent 30%
+    ),
     #0b1020;
 }
 
-.dashboard {
-  width: min(760px, 100%);
+button,
+input {
+  font: inherit;
 }
 
-header {
+.dashboard {
+  width: min(780px, 100%);
+  margin: 0 auto;
+}
+
+.page-header {
   margin-bottom: 26px;
 }
 
@@ -44,6 +56,11 @@ h1 {
   line-height: 1.05;
 }
 
+h2,
+h3 {
+  margin: 0;
+}
+
 .subtitle {
   margin: 12px 0 0;
   color: #aab4cf;
@@ -57,7 +74,7 @@ h1 {
 
 .card,
 .status-card {
-  background: rgba(18, 25, 48, 0.82);
+  background: rgba(18, 25, 48, 0.86);
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
   backdrop-filter: blur(16px);
@@ -65,14 +82,49 @@ h1 {
 }
 
 .card {
+  min-height: 180px;
   padding: 26px;
   display: flex;
   align-items: center;
   gap: 18px;
+  position: relative;
+  overflow: hidden;
+}
+
+.card::after {
+  content: "";
+  position: absolute;
+  width: 130px;
+  height: 130px;
+  right: -45px;
+  bottom: -50px;
+  border-radius: 50%;
+  filter: blur(3px);
+}
+
+.temperature-card::after {
+  background: rgba(255, 104, 104, 0.12);
+}
+
+.humidity-card::after {
+  background: rgba(86, 171, 255, 0.13);
 }
 
 .icon {
+  width: 68px;
+  height: 68px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 20px;
   font-size: 2.4rem;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sensor-content {
+  position: relative;
+  z-index: 1;
 }
 
 .label {
@@ -91,6 +143,12 @@ h1 {
 .unit {
   font-size: 0.42em;
   color: #c5cce0;
+}
+
+.sensor-note {
+  margin: 10px 0 0;
+  color: #7683a5;
+  font-size: 0.82rem;
 }
 
 .status-card {
@@ -140,21 +198,323 @@ h1 {
   color: #f7f9ff;
 }
 
+/* Climatizzatore */
+
+.climate-card {
+  position: relative;
+  overflow: hidden;
+  padding: 28px;
+}
+
+.climate-card::before {
+  content: "";
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  top: -150px;
+  right: -110px;
+  border-radius: 50%;
+  background: rgba(82, 113, 255, 0.18);
+  filter: blur(12px);
+  pointer-events: none;
+}
+
+.section-heading,
+.automatic-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.section-kicker {
+  margin: 0 0 5px;
+  color: #8fa5ff;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.section-heading h2 {
+  font-size: 1.55rem;
+}
+
+.power-badge {
+  min-width: 112px;
+  padding: 11px 15px;
+  text-align: center;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.power-badge span {
+  display: block;
+  margin-bottom: 3px;
+  color: #8f9ab8;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.power-badge strong {
+  color: #f7f9ff;
+  font-size: 1rem;
+}
+
+.primary-button,
+.secondary-button {
+  width: 100%;
+  border: 0;
+  border-radius: 16px;
+  padding: 15px 20px;
+  cursor: pointer;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    opacity 0.18s ease;
+}
+
+.primary-button:hover,
+.secondary-button:hover {
+  transform: translateY(-2px);
+}
+
+.primary-button:active,
+.secondary-button:active {
+  transform: translateY(0);
+}
+
+.power-button {
+  margin-top: 24px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #5271ff, #7657ff);
+  box-shadow: 0 12px 28px rgba(82, 113, 255, 0.3);
+}
+
+.divider {
+  height: 1px;
+  margin: 28px 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.14),
+    transparent
+  );
+}
+
+.automatic-header h3 {
+  font-size: 1.25rem;
+}
+
+.automatic-description {
+  margin: 16px 0 0;
+  color: #97a3c1;
+  line-height: 1.55;
+}
+
+/* Interruttore automatico */
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 62px;
+  height: 34px;
+  flex-shrink: 0;
+}
+
+.switch input {
+  width: 0;
+  height: 0;
+  opacity: 0;
+}
+
+.switch-slider {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+  border-radius: 999px;
+  background: #29324d;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: 0.25s;
+}
+
+.switch-slider::before {
+  content: "";
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  left: 3px;
+  top: 3px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  transition: 0.25s;
+}
+
+.switch input:checked + .switch-slider {
+  background: linear-gradient(135deg, #22d49a, #10b981);
+  box-shadow: 0 0 20px rgba(34, 212, 154, 0.28);
+}
+
+.switch input:checked + .switch-slider::before {
+  transform: translateX(28px);
+}
+
+/* Soglie temperatura */
+
+.threshold-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.threshold-field {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 20px;
+  cursor: pointer;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.07),
+      rgba(255, 255, 255, 0.025)
+    );
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  transition:
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    background 0.2s ease;
+}
+
+.threshold-field:hover {
+  transform: translateY(-2px);
+  border-color: rgba(143, 165, 255, 0.4);
+  background:
+    linear-gradient(
+      145deg,
+      rgba(82, 113, 255, 0.12),
+      rgba(255, 255, 255, 0.03)
+    );
+}
+
+.threshold-icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 15px;
+  font-size: 1.45rem;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.threshold-content {
+  width: 100%;
+  min-width: 0;
+}
+
+.threshold-label {
+  display: block;
+  margin-bottom: 9px;
+  color: #aab4cf;
+  font-size: 0.84rem;
+  font-weight: 650;
+}
+
+.input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.input-wrapper input {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  color: #ffffff;
+  font-size: 1.35rem;
+  font-weight: 750;
+  text-align: center;
+  outline: none;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  background: rgba(6, 10, 25, 0.55);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.input-wrapper input:focus {
+  border-color: #8fa5ff;
+  box-shadow: 0 0 0 4px rgba(82, 113, 255, 0.15);
+}
+
+.input-unit {
+  color: #c5cce0;
+  font-weight: 700;
+}
+
+.secondary-button {
+  margin-top: 20px;
+  color: #dfe5ff;
+  background: rgba(82, 113, 255, 0.14);
+  border: 1px solid rgba(113, 139, 255, 0.35);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+}
+
+.secondary-button:hover {
+  background: rgba(82, 113, 255, 0.22);
+}
+
 .error {
   margin-top: 16px;
-  color: #ff8d98;
+  padding: 14px 16px;
+  color: #ff9ca5;
+  border-radius: 14px;
+  background: rgba(255, 93, 108, 0.09);
+  border: 1px solid rgba(255, 93, 108, 0.18);
 }
 
 @media (max-width: 620px) {
+  body {
+    padding: 16px;
+  }
+
   .cards {
     grid-template-columns: 1fr;
   }
 
   .card {
+    min-height: 150px;
     padding: 22px;
   }
 
   .details {
     flex-direction: column;
+  }
+
+  .climate-card {
+    padding: 22px;
+  }
+
+  .section-heading {
+    align-items: flex-start;
+  }
+
+  .threshold-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .power-badge {
+    min-width: 100px;
   }
 }
