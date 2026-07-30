@@ -4,9 +4,12 @@ import {
   getDatabase,
   ref,
   onValue,
-  set,
   update
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-database.js";
+
+// =====================================================
+// CONFIGURAZIONE FIREBASE
+// =====================================================
 
 const firebaseConfig = {
   apiKey: "AIzaSyC5ENdkXqnd6XQJhDDlc6wDcVAAekvW5ak",
@@ -22,41 +25,84 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 
-const sensoreRef = ref(database, "dispositivi/cameretta");
+// =====================================================
+// RIFERIMENTI FIREBASE
+// =====================================================
+
+const sensoreRef = ref(
+  database,
+  "dispositivi/cameretta"
+);
 
 const climaRef = ref(
   database,
   "dispositivi/cameretta/climatizzatore"
 );
 
-const powerRef = ref(
-  database,
-  "dispositivi/cameretta/climatizzatore/power"
-);
+// =====================================================
+// TEMPO MASSIMO PRIMA DELLO STATO OFFLINE
+// =====================================================
 
 const TEMPO_OFFLINE_MS = 90000;
 
-const temperaturaEl = document.getElementById("temperatura");
-const umiditaEl = document.getElementById("umidita");
-const rssiEl = document.getElementById("rssi");
-const statoEl = document.getElementById("stato");
-const statusDotEl = document.getElementById("statusDot");
+// =====================================================
+// ELEMENTI DELLA PAGINA
+// =====================================================
+
+const temperaturaEl =
+  document.getElementById("temperatura");
+
+const umiditaEl =
+  document.getElementById("umidita");
+
+const rssiEl =
+  document.getElementById("rssi");
+
+const statoEl =
+  document.getElementById("stato");
+
+const statusDotEl =
+  document.getElementById("statusDot");
 
 const ultimoAggiornamentoEl =
   document.getElementById("ultimoAggiornamento");
 
-const erroreEl = document.getElementById("errore");
+const erroreEl =
+  document.getElementById("errore");
 
-const powerButtonEl = document.getElementById("powerButton");
-const powerStateEl = document.getElementById("powerState");
+const powerButtonEl =
+  document.getElementById("powerButton");
 
-const autoModeEl = document.getElementById("autoMode");
-const tempOnEl = document.getElementById("tempOn");
-const tempOffEl = document.getElementById("tempOff");
-const saveSettingsEl = document.getElementById("saveSettings");
+const powerStateEl =
+  document.getElementById("powerState");
+
+const autoModeEl =
+  document.getElementById("autoMode");
+
+const tempOnEl =
+  document.getElementById("tempOn");
+
+const tempOffEl =
+  document.getElementById("tempOff");
+
+const saveSettingsEl =
+  document.getElementById("saveSettings");
+
+// =====================================================
+// VARIABILI
+// =====================================================
 
 let ultimiDati = null;
+
 let climatizzatoreAcceso = false;
+let modalitaAutomaticaAttiva = false;
+
+let comandoPowerInCorso = false;
+let salvataggioInCorso = false;
+
+// =====================================================
+// VISUALIZZAZIONE DATI SENSORI
+// =====================================================
 
 function mostraValori(dati) {
   temperaturaEl.textContent =
@@ -81,16 +127,23 @@ function nascondiValori() {
   rssiEl.textContent = "--";
 }
 
+// =====================================================
+// STATO ESP32
+// =====================================================
+
 function mostraOnline() {
   statoEl.textContent = "ESP32 online";
+
   statusDotEl.classList.add("online");
   statusDotEl.classList.remove("offline");
 }
 
 function mostraOffline() {
   statoEl.textContent = "ESP32 offline";
+
   statusDotEl.classList.remove("online");
   statusDotEl.classList.add("offline");
+
   nascondiValori();
 }
 
@@ -104,8 +157,11 @@ function aggiornaStato() {
     return;
   }
 
-  const timestamp = ultimiDati.ultimoAggiornamento;
-  const tempoTrascorso = Date.now() - timestamp;
+  const timestamp =
+    ultimiDati.ultimoAggiornamento;
+
+  const tempoTrascorso =
+    Date.now() - timestamp;
 
   ultimoAggiornamentoEl.textContent =
     new Date(timestamp).toLocaleString("it-IT");
@@ -118,6 +174,10 @@ function aggiornaStato() {
   }
 }
 
+// =====================================================
+// PULSANTE CLIMATIZZATORE
+// =====================================================
+
 function aggiornaPulsante() {
   if (climatizzatoreAcceso) {
     powerStateEl.textContent = "ACCESO";
@@ -126,15 +186,27 @@ function aggiornaPulsante() {
     powerStateEl.textContent = "SPENTO";
     powerButtonEl.textContent = "ACCENDI";
   }
+
+  powerButtonEl.disabled = comandoPowerInCorso;
+
+  if (comandoPowerInCorso) {
+    powerButtonEl.textContent = "ATTENDERE...";
+  }
 }
+
+// =====================================================
+// LETTURA SENSORI DA FIREBASE
+// =====================================================
 
 onValue(
   sensoreRef,
+
   (snapshot) => {
     ultimiDati = snapshot.val();
 
     if (!ultimiDati) {
       erroreEl.hidden = false;
+
       erroreEl.textContent =
         "Nessun dato disponibile nel database.";
 
@@ -145,10 +217,15 @@ onValue(
     erroreEl.hidden = true;
     aggiornaStato();
   },
+
   (errore) => {
-    console.error(errore);
+    console.error(
+      "Errore lettura sensori:",
+      errore
+    );
 
     erroreEl.hidden = false;
+
     erroreEl.textContent =
       "Impossibile leggere i dati da Firebase.";
 
@@ -157,74 +234,222 @@ onValue(
   }
 );
 
-onValue(climaRef, (snapshot) => {
-  const dati = snapshot.val();
+// =====================================================
+// LETTURA CLIMATIZZATORE DA FIREBASE
+// =====================================================
 
-  if (!dati) {
-    climatizzatoreAcceso = false;
-    autoModeEl.checked = false;
-    tempOnEl.value = 26;
-    tempOffEl.value = 24;
+onValue(
+  climaRef,
+
+  (snapshot) => {
+    const dati = snapshot.val();
+
+    if (!dati) {
+      climatizzatoreAcceso = false;
+      modalitaAutomaticaAttiva = false;
+
+      autoModeEl.checked = false;
+      tempOnEl.value = 26;
+      tempOffEl.value = 24;
+
+      aggiornaPulsante();
+      return;
+    }
+
+    climatizzatoreAcceso =
+      dati.power === true;
+
+    modalitaAutomaticaAttiva =
+      dati.automatico === true;
+
+    autoModeEl.checked =
+      modalitaAutomaticaAttiva;
+
+    tempOnEl.value =
+      typeof dati.sogliaAccensione === "number"
+        ? dati.sogliaAccensione
+        : 26;
+
+    tempOffEl.value =
+      typeof dati.sogliaSpegnimento === "number"
+        ? dati.sogliaSpegnimento
+        : 24;
+
     aggiornaPulsante();
-    return;
-  }
+  },
 
-  climatizzatoreAcceso = dati.power === true;
-  autoModeEl.checked = dati.automatico === true;
-
-  tempOnEl.value =
-    typeof dati.sogliaAccensione === "number"
-      ? dati.sogliaAccensione
-      : 26;
-
-  tempOffEl.value =
-    typeof dati.sogliaSpegnimento === "number"
-      ? dati.sogliaSpegnimento
-      : 24;
-
-  aggiornaPulsante();
-});
-
-powerButtonEl.addEventListener("click", async () => {
-  try {
-    await set(powerRef, !climatizzatoreAcceso);
-  } catch (errore) {
-    console.error(errore);
-    alert("Errore durante l'invio del comando.");
-  }
-});
-
-saveSettingsEl.addEventListener("click", async () => {
-  const sogliaAccensione = parseFloat(tempOnEl.value);
-  const sogliaSpegnimento = parseFloat(tempOffEl.value);
-
-  if (
-    Number.isNaN(sogliaAccensione) ||
-    Number.isNaN(sogliaSpegnimento)
-  ) {
-    alert("Inserisci due temperature valide.");
-    return;
-  }
-
-  if (sogliaSpegnimento >= sogliaAccensione) {
-    alert(
-      "La temperatura di spegnimento deve essere inferiore a quella di accensione."
+  (errore) => {
+    console.error(
+      "Errore lettura climatizzatore:",
+      errore
     );
-    return;
+
+    erroreEl.hidden = false;
+
+    erroreEl.textContent =
+      "Impossibile leggere lo stato del climatizzatore.";
   }
+);
 
-  try {
-    await update(climaRef, {
-      automatico: autoModeEl.checked,
-      sogliaAccensione: sogliaAccensione,
-      sogliaSpegnimento: sogliaSpegnimento
-    });
+// =====================================================
+// COMANDO MANUALE ACCENSIONE / SPEGNIMENTO
+// =====================================================
 
-    alert("Impostazioni salvate.");
-  } catch (errore) {
-    console.error(errore);
-    alert("Errore durante il salvataggio.");
+powerButtonEl.addEventListener(
+  "click",
+
+  async () => {
+    if (comandoPowerInCorso) {
+      return;
+    }
+
+    comandoPowerInCorso = true;
+    aggiornaPulsante();
+
+    const nuovoStato =
+      !climatizzatoreAcceso;
+
+    try {
+      /*
+        Un comando manuale disattiva sempre
+        la modalità automatica.
+
+        Vengono aggiornati insieme:
+        - power
+        - automatico
+
+        Le soglie non vengono modificate.
+      */
+
+      await update(climaRef, {
+        power: nuovoStato,
+        automatico: false
+      });
+
+      /*
+        Aggiornamento immediato dell'interfaccia.
+
+        La lettura Firebase confermerà successivamente
+        gli stessi valori.
+      */
+
+      climatizzatoreAcceso = nuovoStato;
+      modalitaAutomaticaAttiva = false;
+
+      autoModeEl.checked = false;
+    } catch (errore) {
+      console.error(
+        "Errore comando manuale:",
+        errore
+      );
+
+      alert(
+        "Errore durante l'invio del comando."
+      );
+    } finally {
+      comandoPowerInCorso = false;
+      aggiornaPulsante();
+    }
   }
-});
+);
 
-setInterval(aggiornaStato, 5000);
+// =====================================================
+// SALVATAGGIO MODALITÀ AUTOMATICA E SOGLIE
+// =====================================================
+
+saveSettingsEl.addEventListener(
+  "click",
+
+  async () => {
+    if (salvataggioInCorso) {
+      return;
+    }
+
+    const sogliaAccensione =
+      parseFloat(tempOnEl.value);
+
+    const sogliaSpegnimento =
+      parseFloat(tempOffEl.value);
+
+    if (
+      Number.isNaN(sogliaAccensione) ||
+      Number.isNaN(sogliaSpegnimento)
+    ) {
+      alert(
+        "Inserisci due temperature valide."
+      );
+
+      return;
+    }
+
+    if (
+      sogliaSpegnimento >=
+      sogliaAccensione
+    ) {
+      alert(
+        "La temperatura di spegnimento deve essere inferiore a quella di accensione."
+      );
+
+      return;
+    }
+
+    if (
+      sogliaAccensione < 15 ||
+      sogliaAccensione > 35 ||
+      sogliaSpegnimento < 15 ||
+      sogliaSpegnimento > 35
+    ) {
+      alert(
+        "Le temperature devono essere comprese tra 15 °C e 35 °C."
+      );
+
+      return;
+    }
+
+    salvataggioInCorso = true;
+    saveSettingsEl.disabled = true;
+
+    const testoOriginale =
+      saveSettingsEl.textContent;
+
+    saveSettingsEl.textContent =
+      "SALVATAGGIO...";
+
+    try {
+      await update(climaRef, {
+        automatico: autoModeEl.checked,
+        sogliaAccensione: sogliaAccensione,
+        sogliaSpegnimento: sogliaSpegnimento
+      });
+
+      modalitaAutomaticaAttiva =
+        autoModeEl.checked;
+
+      alert("Impostazioni salvate.");
+    } catch (errore) {
+      console.error(
+        "Errore salvataggio impostazioni:",
+        errore
+      );
+
+      alert(
+        "Errore durante il salvataggio."
+      );
+    } finally {
+      salvataggioInCorso = false;
+      saveSettingsEl.disabled = false;
+
+      saveSettingsEl.textContent =
+        testoOriginale;
+    }
+  }
+);
+
+// =====================================================
+// CONTROLLO PERIODICO STATO ESP32
+// =====================================================
+
+setInterval(
+  aggiornaStato,
+  5000
+);
