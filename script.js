@@ -7,10 +7,6 @@ import {
   update
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-database.js";
 
-// =====================================================
-// CONFIGURAZIONE FIREBASE
-// =====================================================
-
 const firebaseConfig = {
   apiKey: "AIzaSyC5ENdkXqnd6XQJhDDlc6wDcVAAekvW5ak",
   authDomain: "temperatura-cameretta.firebaseapp.com",
@@ -25,10 +21,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 
-// =====================================================
-// RIFERIMENTI FIREBASE
-// =====================================================
-
 const sensoreRef = ref(
   database,
   "dispositivi/cameretta"
@@ -39,15 +31,7 @@ const climaRef = ref(
   "dispositivi/cameretta/climatizzatore"
 );
 
-// =====================================================
-// TEMPO MASSIMO PRIMA DELLO STATO OFFLINE
-// =====================================================
-
 const TEMPO_OFFLINE_MS = 90000;
-
-// =====================================================
-// ELEMENTI DELLA PAGINA
-// =====================================================
 
 const temperaturaEl =
   document.getElementById("temperatura");
@@ -88,21 +72,10 @@ const tempOffEl =
 const saveSettingsEl =
   document.getElementById("saveSettings");
 
-// =====================================================
-// VARIABILI
-// =====================================================
-
 let ultimiDati = null;
-
 let climatizzatoreAcceso = false;
-let modalitaAutomaticaAttiva = false;
-
 let comandoPowerInCorso = false;
 let salvataggioInCorso = false;
-
-// =====================================================
-// VISUALIZZAZIONE DATI SENSORI
-// =====================================================
 
 function mostraValori(dati) {
   temperaturaEl.textContent =
@@ -126,10 +99,6 @@ function nascondiValori() {
   umiditaEl.textContent = "--";
   rssiEl.textContent = "--";
 }
-
-// =====================================================
-// STATO ESP32
-// =====================================================
 
 function mostraOnline() {
   statoEl.textContent = "ESP32 online";
@@ -174,10 +143,6 @@ function aggiornaStato() {
   }
 }
 
-// =====================================================
-// PULSANTE CLIMATIZZATORE
-// =====================================================
-
 function aggiornaPulsante() {
   if (climatizzatoreAcceso) {
     powerStateEl.textContent = "ACCESO";
@@ -187,16 +152,14 @@ function aggiornaPulsante() {
     powerButtonEl.textContent = "ACCENDI";
   }
 
-  powerButtonEl.disabled = comandoPowerInCorso;
+  powerButtonEl.disabled =
+    comandoPowerInCorso;
 
   if (comandoPowerInCorso) {
-    powerButtonEl.textContent = "ATTENDERE...";
+    powerButtonEl.textContent =
+      "ATTENDERE...";
   }
 }
-
-// =====================================================
-// LETTURA SENSORI DA FIREBASE
-// =====================================================
 
 onValue(
   sensoreRef,
@@ -215,6 +178,7 @@ onValue(
     }
 
     erroreEl.hidden = true;
+
     aggiornaStato();
   },
 
@@ -230,13 +194,10 @@ onValue(
       "Impossibile leggere i dati da Firebase.";
 
     ultimiDati = null;
+
     aggiornaStato();
   }
 );
-
-// =====================================================
-// LETTURA CLIMATIZZATORE DA FIREBASE
-// =====================================================
 
 onValue(
   climaRef,
@@ -246,8 +207,6 @@ onValue(
 
     if (!dati) {
       climatizzatoreAcceso = false;
-      modalitaAutomaticaAttiva = false;
-
       autoModeEl.checked = false;
       tempOnEl.value = 26;
       tempOffEl.value = 24;
@@ -259,11 +218,8 @@ onValue(
     climatizzatoreAcceso =
       dati.power === true;
 
-    modalitaAutomaticaAttiva =
-      dati.automatico === true;
-
     autoModeEl.checked =
-      modalitaAutomaticaAttiva;
+      dati.automatico === true;
 
     tempOnEl.value =
       typeof dati.sogliaAccensione === "number"
@@ -291,10 +247,6 @@ onValue(
   }
 );
 
-// =====================================================
-// COMANDO MANUALE ACCENSIONE / SPEGNIMENTO
-// =====================================================
-
 powerButtonEl.addEventListener(
   "click",
 
@@ -304,39 +256,23 @@ powerButtonEl.addEventListener(
     }
 
     comandoPowerInCorso = true;
+
     aggiornaPulsante();
 
     const nuovoStato =
       !climatizzatoreAcceso;
 
     try {
-      /*
-        Un comando manuale disattiva sempre
-        la modalità automatica.
-
-        Vengono aggiornati insieme:
-        - power
-        - automatico
-
-        Le soglie non vengono modificate.
-      */
-
       await update(climaRef, {
         power: nuovoStato,
         automatico: false
       });
 
-      /*
-        Aggiornamento immediato dell'interfaccia.
+      climatizzatoreAcceso =
+        nuovoStato;
 
-        La lettura Firebase confermerà successivamente
-        gli stessi valori.
-      */
-
-      climatizzatoreAcceso = nuovoStato;
-      modalitaAutomaticaAttiva = false;
-
-      autoModeEl.checked = false;
+      autoModeEl.checked =
+        false;
     } catch (errore) {
       console.error(
         "Errore comando manuale:",
@@ -348,14 +284,11 @@ powerButtonEl.addEventListener(
       );
     } finally {
       comandoPowerInCorso = false;
+
       aggiornaPulsante();
     }
   }
 );
-
-// =====================================================
-// SALVATAGGIO MODALITÀ AUTOMATICA E SOGLIE
-// =====================================================
 
 saveSettingsEl.addEventListener(
   "click",
@@ -383,11 +316,11 @@ saveSettingsEl.addEventListener(
     }
 
     if (
-      sogliaSpegnimento >=
+      sogliaSpegnimento >
       sogliaAccensione
     ) {
       alert(
-        "La temperatura di spegnimento deve essere inferiore a quella di accensione."
+        "La temperatura di spegnimento non può essere superiore a quella di accensione."
       );
 
       return;
@@ -407,6 +340,7 @@ saveSettingsEl.addEventListener(
     }
 
     salvataggioInCorso = true;
+
     saveSettingsEl.disabled = true;
 
     const testoOriginale =
@@ -418,14 +352,13 @@ saveSettingsEl.addEventListener(
     try {
       await update(climaRef, {
         automatico: autoModeEl.checked,
-        sogliaAccensione: sogliaAccensione,
-        sogliaSpegnimento: sogliaSpegnimento
+        sogliaAccensione,
+        sogliaSpegnimento
       });
 
-      modalitaAutomaticaAttiva =
-        autoModeEl.checked;
-
-      alert("Impostazioni salvate.");
+      alert(
+        "Impostazioni salvate e inviate all'ESP32."
+      );
     } catch (errore) {
       console.error(
         "Errore salvataggio impostazioni:",
@@ -437,6 +370,7 @@ saveSettingsEl.addEventListener(
       );
     } finally {
       salvataggioInCorso = false;
+
       saveSettingsEl.disabled = false;
 
       saveSettingsEl.textContent =
@@ -445,11 +379,7 @@ saveSettingsEl.addEventListener(
   }
 );
 
-// =====================================================
-// CONTROLLO PERIODICO STATO ESP32
-// =====================================================
-
 setInterval(
   aggiornaStato,
-  5000
+  1000
 );
