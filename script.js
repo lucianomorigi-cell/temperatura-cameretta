@@ -31,7 +31,7 @@ const climaRef = ref(
   "dispositivi/cameretta/climatizzatore"
 );
 
-const TEMPO_OFFLINE_MS = 90000;
+const TEMPO_OFFLINE_MS = 3000;
 
 const temperaturaEl =
   document.getElementById("temperatura");
