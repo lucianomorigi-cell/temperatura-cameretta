@@ -31,7 +31,7 @@ const climaRef = ref(
   "dispositivi/cameretta/climatizzatore"
 );
 
-const TEMPO_OFFLINE_MS = 3000;
+const TEMPO_OFFLINE_MS = 5000;
 
 const temperaturaEl =
   document.getElementById("temperatura");
@@ -74,8 +74,9 @@ const saveSettingsEl =
 
 let ultimiDati = null;
 let climatizzatoreAcceso = false;
+let automaticoAttivo = false;
 let comandoPowerInCorso = false;
-let cambioAutomaticoInCorso = false;
+let comandoAutomaticoInCorso = false;
 let salvataggioInCorso = false;
 
 function mostraValori(dati) {
@@ -145,13 +146,15 @@ function aggiornaStato() {
 }
 
 function aggiornaPulsante() {
-  if (climatizzatoreAcceso) {
-    powerStateEl.textContent = "ACCESO";
-    powerButtonEl.textContent = "SPEGNI";
-  } else {
-    powerStateEl.textContent = "SPENTO";
-    powerButtonEl.textContent = "ACCENDI";
-  }
+  powerStateEl.textContent =
+    climatizzatoreAcceso
+      ? "ACCESO"
+      : "SPENTO";
+
+  powerButtonEl.textContent =
+    climatizzatoreAcceso
+      ? "SPEGNI"
+      : "ACCENDI";
 
   powerButtonEl.disabled =
     comandoPowerInCorso;
@@ -208,6 +211,8 @@ onValue(
 
     if (!dati) {
       climatizzatoreAcceso = false;
+      automaticoAttivo = false;
+
       autoModeEl.checked = false;
       tempOnEl.value = 26;
       tempOffEl.value = 24;
@@ -219,8 +224,11 @@ onValue(
     climatizzatoreAcceso =
       dati.power === true;
 
-    autoModeEl.checked =
+    automaticoAttivo =
       dati.automatico === true;
+
+    autoModeEl.checked =
+      automaticoAttivo;
 
     tempOnEl.value =
       typeof dati.sogliaAccensione === "number"
@@ -256,24 +264,18 @@ powerButtonEl.addEventListener(
       return;
     }
 
+    const nuovoStato =
+      !climatizzatoreAcceso;
+
     comandoPowerInCorso = true;
 
     aggiornaPulsante();
-
-    const nuovoStato =
-      !climatizzatoreAcceso;
 
     try {
       await update(climaRef, {
         power: nuovoStato,
         automatico: false
       });
-
-      climatizzatoreAcceso =
-        nuovoStato;
-
-      autoModeEl.checked =
-        false;
     } catch (errore) {
       console.error(
         "Errore comando manuale:",
@@ -295,15 +297,17 @@ autoModeEl.addEventListener(
   "change",
 
   async () => {
-    if (cambioAutomaticoInCorso) {
+    if (comandoAutomaticoInCorso) {
       return;
     }
-
-    cambioAutomaticoInCorso = true;
 
     const nuovoStato =
       autoModeEl.checked;
 
+    const statoPrecedente =
+      automaticoAttivo;
+
+    comandoAutomaticoInCorso = true;
     autoModeEl.disabled = true;
 
     try {
@@ -312,19 +316,18 @@ autoModeEl.addEventListener(
       });
     } catch (errore) {
       console.error(
-        "Errore modifica modalità automatica:",
+        "Errore modalità automatica:",
         errore
       );
 
       autoModeEl.checked =
-        !nuovoStato;
+        statoPrecedente;
 
       alert(
         "Errore durante la modifica della modalità automatica."
       );
     } finally {
-      cambioAutomaticoInCorso = false;
-
+      comandoAutomaticoInCorso = false;
       autoModeEl.disabled = false;
     }
   }
@@ -380,7 +383,6 @@ saveSettingsEl.addEventListener(
     }
 
     salvataggioInCorso = true;
-
     saveSettingsEl.disabled = true;
 
     const testoOriginale =
@@ -409,7 +411,6 @@ saveSettingsEl.addEventListener(
       );
     } finally {
       salvataggioInCorso = false;
-
       saveSettingsEl.disabled = false;
 
       saveSettingsEl.textContent =
