@@ -12,7 +12,7 @@
 
   <title>Camera Ascanio</title>
 
-  <link rel="stylesheet" href="style.css?v=5">
+  <link rel="stylesheet" href="./style.css?v=7">
 </head>
 
 <body>
@@ -41,7 +41,9 @@
             <span class="unit">°C</span>
           </p>
 
-          <p class="sensor-note">Temperatura attuale</p>
+          <p class="sensor-note">
+            Temperatura attuale
+          </p>
         </div>
       </article>
 
@@ -56,7 +58,9 @@
             <span class="unit">%</span>
           </p>
 
-          <p class="sensor-note">Umidità relativa</p>
+          <p class="sensor-note">
+            Umidità relativa
+          </p>
         </div>
       </article>
 
@@ -71,7 +75,9 @@
           aria-hidden="true"
         ></span>
 
-        <strong id="stato">Connessione...</strong>
+        <strong id="stato">
+          Connessione...
+        </strong>
       </div>
 
       <div class="details">
@@ -85,7 +91,9 @@
 
         <p>
           Ultimo dato ricevuto:
-          <strong id="ultimoAggiornamento">--</strong>
+          <strong id="ultimoAggiornamento">
+            --
+          </strong>
         </p>
 
       </div>
@@ -97,13 +105,21 @@
       <div class="section-heading">
 
         <div>
-          <p class="section-kicker">Controllo</p>
-          <h2>❄️ Climatizzatore</h2>
+          <p class="section-kicker">
+            Controllo
+          </p>
+
+          <h2>
+            ❄️ Climatizzatore
+          </h2>
         </div>
 
         <div class="power-badge">
           <span>Stato</span>
-          <strong id="powerState">SPENTO</strong>
+
+          <strong id="powerState">
+            SPENTO
+          </strong>
         </div>
 
       </div>
@@ -121,12 +137,21 @@
       <div class="automatic-header">
 
         <div>
-          <p class="section-kicker">Regolazione</p>
-          <h3>Modalità automatica</h3>
+          <p class="section-kicker">
+            Regolazione
+          </p>
+
+          <h3>
+            Modalità automatica
+          </h3>
         </div>
 
         <label class="switch">
-          <input type="checkbox" id="autoMode">
+          <input
+            type="checkbox"
+            id="autoMode"
+          >
+
           <span class="switch-slider"></span>
         </label>
 
@@ -139,14 +164,23 @@
 
       <div class="threshold-grid">
 
-        <label class="threshold-field" for="tempOn">
+        <label
+          class="threshold-field"
+          for="tempOn"
+        >
 
-          <span class="threshold-icon">🔥</span>
+          <span class="threshold-icon">
+            🔥
+          </span>
 
           <span class="threshold-content">
-            <span class="threshold-label">Accendi sopra</span>
+
+            <span class="threshold-label">
+              Accendi sopra
+            </span>
 
             <span class="input-wrapper">
+
               <input
                 id="tempOn"
                 type="number"
@@ -157,20 +191,33 @@
                 inputmode="decimal"
               >
 
-              <span class="input-unit">°C</span>
+              <span class="input-unit">
+                °C
+              </span>
+
             </span>
+
           </span>
 
         </label>
 
-        <label class="threshold-field" for="tempOff">
+        <label
+          class="threshold-field"
+          for="tempOff"
+        >
 
-          <span class="threshold-icon">❄️</span>
+          <span class="threshold-icon">
+            ❄️
+          </span>
 
           <span class="threshold-content">
-            <span class="threshold-label">Spegni sotto</span>
+
+            <span class="threshold-label">
+              Spegni sotto
+            </span>
 
             <span class="input-wrapper">
+
               <input
                 id="tempOff"
                 type="number"
@@ -181,8 +228,12 @@
                 inputmode="decimal"
               >
 
-              <span class="input-unit">°C</span>
+              <span class="input-unit">
+                °C
+              </span>
+
             </span>
+
           </span>
 
         </label>
@@ -199,10 +250,17 @@
 
     </section>
 
-    <p id="errore" class="error" hidden></p>
+    <p
+      id="errore"
+      class="error"
+      hidden
+    ></p>
 
   </main>
 
-  <script type="module" src="script.js?v=5"></script>
+  <script
+    type="module"
+    src="./script.js?v=7"
+  ></script>
 </body>
 </html>
