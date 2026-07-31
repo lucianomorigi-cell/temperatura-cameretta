@@ -75,6 +75,7 @@ const saveSettingsEl =
 let ultimiDati = null;
 let climatizzatoreAcceso = false;
 let comandoPowerInCorso = false;
+let cambioAutomaticoInCorso = false;
 let salvataggioInCorso = false;
 
 function mostraValori(dati) {
@@ -290,6 +291,45 @@ powerButtonEl.addEventListener(
   }
 );
 
+autoModeEl.addEventListener(
+  "change",
+
+  async () => {
+    if (cambioAutomaticoInCorso) {
+      return;
+    }
+
+    cambioAutomaticoInCorso = true;
+
+    const nuovoStato =
+      autoModeEl.checked;
+
+    autoModeEl.disabled = true;
+
+    try {
+      await update(climaRef, {
+        automatico: nuovoStato
+      });
+    } catch (errore) {
+      console.error(
+        "Errore modifica modalità automatica:",
+        errore
+      );
+
+      autoModeEl.checked =
+        !nuovoStato;
+
+      alert(
+        "Errore durante la modifica della modalità automatica."
+      );
+    } finally {
+      cambioAutomaticoInCorso = false;
+
+      autoModeEl.disabled = false;
+    }
+  }
+);
+
 saveSettingsEl.addEventListener(
   "click",
 
@@ -351,7 +391,6 @@ saveSettingsEl.addEventListener(
 
     try {
       await update(climaRef, {
-        automatico: autoModeEl.checked,
         sogliaAccensione,
         sogliaSpegnimento
       });
