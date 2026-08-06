@@ -13,32 +13,23 @@ const firebaseConfig = {
   databaseURL:
     "https://temperatura-cameretta-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "temperatura-cameretta",
-  storageBucket: "temperatura-cameretta.firebasestorage.app",
-  messagingSenderId: "1031899495611",
-  appId: "1:1031899495611:web:3a57f6e4c6615f15093d9e"
+  storageBucket:
+    "temperatura-cameretta.firebasestorage.app",
+  messagingSenderId:
+    "1031899495611",
+  appId:
+    "1:1031899495611:web:3a57f6e4c6615f15093d9e"
 };
 
-const app = initializeApp(firebaseConfig);
-const database = getDatabase(app);
+const app =
+  initializeApp(firebaseConfig);
 
-const temperaturaRef = ref(
-  database,
-  "dispositivi/cameretta/temperatura"
-);
+const database =
+  getDatabase(app);
 
-const umiditaRef = ref(
+const cameraRef = ref(
   database,
-  "dispositivi/cameretta/umidita"
-);
-
-const rssiRef = ref(
-  database,
-  "dispositivi/cameretta/rssi"
-);
-
-const ultimoAggiornamentoRef = ref(
-  database,
-  "dispositivi/cameretta/ultimoAggiornamento"
+  "dispositivi/cameretta"
 );
 
 const climaRef = ref(
@@ -66,6 +57,15 @@ const statusDotEl =
 
 const ultimoAggiornamentoEl =
   document.getElementById("ultimoAggiornamento");
+
+const indirizzoIpEl =
+  document.getElementById("indirizzoIp");
+
+const uptimeEl =
+  document.getElementById("uptime");
+
+const firmwareEl =
+  document.getElementById("firmware");
 
 const erroreEl =
   document.getElementById("errore");
@@ -104,6 +104,9 @@ let temperaturaCorrente = null;
 let umiditaCorrente = null;
 let rssiCorrente = null;
 let ultimoAggiornamento = null;
+let indirizzoIp = null;
+let uptime = null;
+let firmware = null;
 
 let esp32Online = false;
 
@@ -112,7 +115,7 @@ let automaticoAttivo = false;
 
 let comandoPowerInCorso = false;
 let comandoAutomaticoInCorso = false;
-let salvataggioInCorso = false;
+let salvataggioSoglieInCorso = false;
 let salvataggioProgrammaInCorso = false;
 
 let programmaCaricato = false;
@@ -124,10 +127,51 @@ function mostraErrore(messaggio) {
 
 function nascondiErrore() {
   erroreEl.hidden = true;
+  erroreEl.textContent = "";
 }
 
-function mostraValori() {
+function formattaUptime(secondi) {
+  if (
+    typeof secondi !== "number" ||
+    !Number.isFinite(secondi) ||
+    secondi < 0
+  ) {
+    return "--";
+  }
+
+  const giorni =
+    Math.floor(secondi / 86400);
+
+  const ore =
+    Math.floor(
+      (secondi % 86400) / 3600
+    );
+
+  const minuti =
+    Math.floor(
+      (secondi % 3600) / 60
+    );
+
+  if (giorni > 0) {
+    return `${giorni}g ${ore}h ${minuti}m`;
+  }
+
+  if (ore > 0) {
+    return `${ore}h ${minuti}m`;
+  }
+
+  return `${minuti}m`;
+}
+
+function nascondiValoriSensori() {
+  temperaturaEl.textContent = "--";
+  umiditaEl.textContent = "--";
+  rssiEl.textContent = "--";
+}
+
+function mostraValoriSensori() {
   if (!esp32Online) {
+    nascondiValoriSensori();
     return;
   }
 
@@ -147,37 +191,83 @@ function mostraValori() {
       : "--";
 }
 
-function nascondiValori() {
-  temperaturaEl.textContent = "--";
-  umiditaEl.textContent = "--";
-  rssiEl.textContent = "--";
+function mostraDatiSistema() {
+  indirizzoIpEl.textContent =
+    esp32Online &&
+    typeof indirizzoIp === "string" &&
+    indirizzoIp.length > 0
+      ? indirizzoIp
+      : "--";
+
+  uptimeEl.textContent =
+    esp32Online
+      ? formattaUptime(uptime)
+      : "--";
+
+  firmwareEl.textContent =
+    typeof firmware === "string" &&
+    firmware.length > 0
+      ? firmware
+      : "--";
 }
 
 function mostraOnline() {
   esp32Online = true;
 
-  statoEl.textContent = "ESP32 online";
+  document.body.classList.add(
+    "esp32-online"
+  );
 
-  statusDotEl.classList.add("online");
-  statusDotEl.classList.remove("offline");
+  statoEl.textContent =
+    "ESP32 online";
 
-  mostraValori();
+  statusDotEl.classList.add(
+    "online"
+  );
+
+  statusDotEl.classList.remove(
+    "offline"
+  );
+
+  mostraValoriSensori();
+  mostraDatiSistema();
 }
 
 function mostraOffline() {
   esp32Online = false;
 
-  statoEl.textContent = "ESP32 offline";
+  document.body.classList.remove(
+    "esp32-online"
+  );
 
-  statusDotEl.classList.remove("online");
-  statusDotEl.classList.add("offline");
+  statoEl.textContent =
+    "ESP32 offline";
 
-  nascondiValori();
+  statusDotEl.classList.remove(
+    "online"
+  );
+
+  statusDotEl.classList.add(
+    "offline"
+  );
+
+  nascondiValoriSensori();
+
+  indirizzoIpEl.textContent = "--";
+  uptimeEl.textContent = "--";
 }
 
-function aggiornaStato() {
-  if (typeof ultimoAggiornamento !== "number") {
-    ultimoAggiornamentoEl.textContent = "--";
+function aggiornaStatoOnline() {
+  if (
+    typeof ultimoAggiornamento !==
+      "number" ||
+    !Number.isFinite(
+      ultimoAggiornamento
+    )
+  ) {
+    ultimoAggiornamentoEl.textContent =
+      "--";
+
     mostraOffline();
     return;
   }
@@ -188,16 +278,20 @@ function aggiornaStato() {
     ).toLocaleString("it-IT");
 
   const tempoTrascorso =
-    Date.now() - ultimoAggiornamento;
+    Date.now() -
+    ultimoAggiornamento;
 
-  if (tempoTrascorso <= TEMPO_OFFLINE_MS) {
+  if (
+    tempoTrascorso <=
+    TEMPO_OFFLINE_MS
+  ) {
     mostraOnline();
   } else {
     mostraOffline();
   }
 }
 
-function aggiornaPulsante() {
+function aggiornaPulsantePower() {
   powerStateEl.textContent =
     climatizzatoreAcceso
       ? "ACCESO"
@@ -217,10 +311,22 @@ function aggiornaPulsante() {
   }
 }
 
-function creaRigaEvento(evento = {}) {
+function normalizzaNumero(
+  valore,
+  predefinito
+) {
+  return typeof valore === "number" &&
+    Number.isFinite(valore)
+    ? valore
+    : predefinito;
+}
+
+function creaRigaEvento(
+  evento = {}
+) {
   if (
-    !scheduleRowsEl ||
-    scheduleRowsEl.children.length >= MAX_EVENTI
+    scheduleRowsEl.children.length >=
+    MAX_EVENTI
   ) {
     return;
   }
@@ -231,53 +337,56 @@ function creaRigaEvento(evento = {}) {
   riga.className =
     "schedule-row";
 
-  const ora =
+  const oraInput =
     document.createElement("input");
 
-  ora.type = "time";
-  ora.className = "event-time";
+  oraInput.type = "time";
+  oraInput.className =
+    "event-time";
 
-  const oraEvento =
-    Number.isInteger(evento.ora)
-      ? evento.ora
-      : 8;
+  const ora =
+    normalizzaNumero(
+      evento.ora,
+      8
+    );
 
-  const minutoEvento =
-    Number.isInteger(evento.minuto)
-      ? evento.minuto
-      : 0;
+  const minuto =
+    normalizzaNumero(
+      evento.minuto,
+      0
+    );
 
-  ora.value =
-    `${String(oraEvento).padStart(2, "0")}:` +
-    `${String(minutoEvento).padStart(2, "0")}`;
+  oraInput.value =
+    `${String(ora).padStart(2, "0")}:` +
+    `${String(minuto).padStart(2, "0")}`;
 
-  const azione =
+  const azioneSelect =
     document.createElement("select");
 
-  azione.className =
+  azioneSelect.className =
     "event-action";
 
-  azione.innerHTML = `
+  azioneSelect.innerHTML = `
     <option value="on">ACCENDI</option>
     <option value="off">SPEGNI</option>
   `;
 
-  azione.value =
+  azioneSelect.value =
     evento.azione === false
       ? "off"
       : "on";
 
-  const rimuovi =
+  const rimuoviButton =
     document.createElement("button");
 
-  rimuovi.type = "button";
-  rimuovi.className =
+  rimuoviButton.type = "button";
+  rimuoviButton.className =
     "remove-event";
 
-  rimuovi.textContent =
+  rimuoviButton.textContent =
     "RIMUOVI";
 
-  rimuovi.addEventListener(
+  rimuoviButton.addEventListener(
     "click",
     () => {
       riga.remove();
@@ -285,9 +394,9 @@ function creaRigaEvento(evento = {}) {
   );
 
   riga.append(
-    ora,
-    azione,
-    rimuovi
+    oraInput,
+    azioneSelect,
+    rimuoviButton
   );
 
   scheduleRowsEl.appendChild(
@@ -295,14 +404,9 @@ function creaRigaEvento(evento = {}) {
   );
 }
 
-function caricaProgramma(programmazione) {
-  if (
-    !scheduleEnabledEl ||
-    !scheduleRowsEl
-  ) {
-    return;
-  }
-
+function caricaProgrammazione(
+  programmazione
+) {
   scheduleEnabledEl.checked =
     programmazione?.abilitata === true;
 
@@ -311,12 +415,12 @@ function caricaProgramma(programmazione) {
   const eventi =
     programmazione?.eventi ?? {};
 
-  const lista =
+  const listaEventi =
     Array.isArray(eventi)
       ? eventi
       : Object.values(eventi);
 
-  lista
+  listaEventi
     .filter(
       (evento) =>
         evento &&
@@ -325,14 +429,29 @@ function caricaProgramma(programmazione) {
     .sort(
       (a, b) =>
         (
-          Number(a.ora) * 60 +
-          Number(a.minuto)
+          normalizzaNumero(
+            a.ora,
+            0
+          ) *
+            60 +
+          normalizzaNumero(
+            a.minuto,
+            0
+          )
         ) -
         (
-          Number(b.ora) * 60 +
-          Number(b.minuto)
+          normalizzaNumero(
+            b.ora,
+            0
+          ) *
+            60 +
+          normalizzaNumero(
+            b.minuto,
+            0
+          )
         )
     )
+    .slice(0, MAX_EVENTI)
     .forEach(
       (evento) => {
         creaRigaEvento(evento);
@@ -340,7 +459,8 @@ function caricaProgramma(programmazione) {
     );
 
   if (
-    scheduleRowsEl.children.length === 0
+    scheduleRowsEl.children.length ===
+    0
   ) {
     creaRigaEvento({
       ora: 8,
@@ -359,10 +479,6 @@ function caricaProgramma(programmazione) {
 }
 
 function leggiEventiInterfaccia() {
-  if (!scheduleRowsEl) {
-    return [];
-  }
-
   return [
     ...scheduleRowsEl.querySelectorAll(
       ".schedule-row"
@@ -370,31 +486,47 @@ function leggiEventiInterfaccia() {
   ]
     .map(
       (riga) => {
-        const valoreOra =
+        const oraInput =
           riga.querySelector(
             ".event-time"
-          ).value;
+          );
 
-        const valoreAzione =
+        const azioneSelect =
           riga.querySelector(
             ".event-action"
-          ).value;
+          );
 
-        if (!valoreOra) {
+        if (
+          !oraInput ||
+          !azioneSelect ||
+          !oraInput.value
+        ) {
           return null;
         }
 
         const [ora, minuto] =
-          valoreOra
+          oraInput.value
             .split(":")
             .map(Number);
+
+        if (
+          !Number.isInteger(ora) ||
+          !Number.isInteger(minuto) ||
+          ora < 0 ||
+          ora > 23 ||
+          minuto < 0 ||
+          minuto > 59
+        ) {
+          return null;
+        }
 
         return {
           attivo: true,
           ora,
           minuto,
           azione:
-            valoreAzione === "on"
+            azioneSelect.value ===
+            "on"
         };
       }
     )
@@ -412,213 +544,172 @@ function leggiEventiInterfaccia() {
     );
 }
 
-onValue(
-  temperaturaRef,
+function aggiornaDatiCamera(
+  dati
+) {
+  const sensori =
+    dati?.sensori ?? {};
 
-  (snapshot) => {
-    const valore =
-      snapshot.val();
+  const sistema =
+    dati?.sistema ?? {};
 
-    if (
-      typeof valore === "number"
-    ) {
-      temperaturaCorrente =
-        valore;
+  temperaturaCorrente =
+    typeof sensori.temperatura ===
+      "number"
+      ? sensori.temperatura
+      : null;
 
-      mostraValori();
-      nascondiErrore();
+  umiditaCorrente =
+    typeof sensori.umidita ===
+      "number"
+      ? sensori.umidita
+      : null;
+
+  rssiCorrente =
+    typeof sistema.rssi === "number"
+      ? sistema.rssi
+      : null;
+
+  ultimoAggiornamento =
+    typeof sistema
+      .ultimoAggiornamento ===
+      "number"
+      ? sistema.ultimoAggiornamento
+      : null;
+
+  indirizzoIp =
+    typeof sistema.ip === "string"
+      ? sistema.ip
+      : null;
+
+  uptime =
+    typeof sistema.uptime === "number"
+      ? sistema.uptime
+      : null;
+
+  firmware =
+    typeof sistema.firmware === "string"
+      ? sistema.firmware
+      : null;
+
+  aggiornaStatoOnline();
+}
+
+function aggiornaDatiClima(
+  dati
+) {
+  if (!dati) {
+    climatizzatoreAcceso = false;
+    automaticoAttivo = false;
+
+    autoModeEl.checked = false;
+    tempOnEl.value = 26;
+    tempOffEl.value = 24;
+
+    aggiornaPulsantePower();
+
+    if (!programmaCaricato) {
+      caricaProgrammazione(null);
     }
-  },
 
-  (errore) => {
-    console.error(
-      "Errore temperatura:",
-      errore
-    );
-
-    mostraErrore(
-      "Impossibile leggere la temperatura."
-    );
+    return;
   }
-);
+
+  climatizzatoreAcceso =
+    dati.power === true;
+
+  automaticoAttivo =
+    dati.automatico === true;
+
+  autoModeEl.checked =
+    automaticoAttivo;
+
+  if (
+    document.activeElement !==
+      tempOnEl &&
+    typeof dati.sogliaAccensione ===
+      "number"
+  ) {
+    tempOnEl.value =
+      dati.sogliaAccensione;
+  }
+
+  if (
+    document.activeElement !==
+      tempOffEl &&
+    typeof dati.sogliaSpegnimento ===
+      "number"
+  ) {
+    tempOffEl.value =
+      dati.sogliaSpegnimento;
+  }
+
+  if (!programmaCaricato) {
+    caricaProgrammazione(
+      dati.programmazione
+    );
+  } else if (
+    !salvataggioProgrammaInCorso
+  ) {
+    scheduleEnabledEl.checked =
+      dati.programmazione
+        ?.abilitata === true;
+  }
+
+  aggiornaPulsantePower();
+}
 
 onValue(
-  umiditaRef,
-
-  (snapshot) => {
-    const valore =
-      snapshot.val();
-
-    if (
-      typeof valore === "number"
-    ) {
-      umiditaCorrente =
-        valore;
-
-      mostraValori();
-      nascondiErrore();
-    }
-  },
-
-  (errore) => {
-    console.error(
-      "Errore umidità:",
-      errore
-    );
-
-    mostraErrore(
-      "Impossibile leggere l'umidità."
-    );
-  }
-);
-
-onValue(
-  rssiRef,
-
-  (snapshot) => {
-    const valore =
-      snapshot.val();
-
-    if (
-      typeof valore === "number"
-    ) {
-      rssiCorrente =
-        valore;
-
-      mostraValori();
-      nascondiErrore();
-    }
-  },
-
-  (errore) => {
-    console.error(
-      "Errore RSSI:",
-      errore
-    );
-
-    mostraErrore(
-      "Impossibile leggere il segnale Wi-Fi."
-    );
-  }
-);
-
-onValue(
-  ultimoAggiornamentoRef,
-
-  (snapshot) => {
-    const valore =
-      snapshot.val();
-
-    if (
-      typeof valore === "number"
-    ) {
-      ultimoAggiornamento =
-        valore;
-
-      aggiornaStato();
-      nascondiErrore();
-    } else {
-      ultimoAggiornamento =
-        null;
-
-      aggiornaStato();
-    }
-  },
-
-  (errore) => {
-    console.error(
-      "Errore stato ESP32:",
-      errore
-    );
-
-    mostraErrore(
-      "Impossibile leggere lo stato dell'ESP32."
-    );
-
-    mostraOffline();
-  }
-);
-
-onValue(
-  climaRef,
-
+  cameraRef,
   (snapshot) => {
     const dati =
       snapshot.val();
 
     if (!dati) {
-      climatizzatoreAcceso =
-        false;
+      temperaturaCorrente = null;
+      umiditaCorrente = null;
+      rssiCorrente = null;
+      ultimoAggiornamento = null;
+      indirizzoIp = null;
+      uptime = null;
+      firmware = null;
 
-      automaticoAttivo =
-        false;
+      aggiornaStatoOnline();
 
-      autoModeEl.checked =
-        false;
-
-      tempOnEl.value =
-        26;
-
-      tempOffEl.value =
-        24;
-
-      aggiornaPulsante();
-
-      if (!programmaCaricato) {
-        caricaProgramma(null);
-      }
+      mostraErrore(
+        "Nessun dato disponibile."
+      );
 
       return;
     }
 
-    climatizzatoreAcceso =
-      dati.power === true;
-
-    automaticoAttivo =
-      dati.automatico === true;
-
-    autoModeEl.checked =
-      automaticoAttivo;
-
-    if (
-      document.activeElement !==
-        tempOnEl &&
-      typeof dati.sogliaAccensione ===
-        "number"
-    ) {
-      tempOnEl.value =
-        dati.sogliaAccensione;
-    }
-
-    if (
-      document.activeElement !==
-        tempOffEl &&
-      typeof dati.sogliaSpegnimento ===
-        "number"
-    ) {
-      tempOffEl.value =
-        dati.sogliaSpegnimento;
-    }
-
-    if (!programmaCaricato) {
-      caricaProgramma(
-        dati.programmazione
-      );
-    } else if (
-      !salvataggioProgrammaInCorso &&
-      scheduleEnabledEl
-    ) {
-      scheduleEnabledEl.checked =
-        dati.programmazione
-          ?.abilitata === true;
-    }
-
-    aggiornaPulsante();
+    aggiornaDatiCamera(dati);
+    nascondiErrore();
   },
-
   (errore) => {
     console.error(
-      "Errore climatizzatore:",
+      "Errore lettura camera:",
+      errore
+    );
+
+    mostraOffline();
+
+    mostraErrore(
+      "Impossibile leggere i dati da Firebase."
+    );
+  }
+);
+
+onValue(
+  climaRef,
+  (snapshot) => {
+    aggiornaDatiClima(
+      snapshot.val()
+    );
+  },
+  (errore) => {
+    console.error(
+      "Errore lettura climatizzatore:",
       errore
     );
 
@@ -630,7 +721,6 @@ onValue(
 
 powerButtonEl.addEventListener(
   "click",
-
   async () => {
     if (comandoPowerInCorso) {
       return;
@@ -642,13 +732,11 @@ powerButtonEl.addEventListener(
     const nuovoStato =
       !climatizzatoreAcceso;
 
-    comandoPowerInCorso =
-      true;
-
+    comandoPowerInCorso = true;
     climatizzatoreAcceso =
       nuovoStato;
 
-    aggiornaPulsante();
+    aggiornaPulsantePower();
 
     try {
       await update(
@@ -669,23 +757,20 @@ powerButtonEl.addEventListener(
       climatizzatoreAcceso =
         statoPrecedente;
 
-      aggiornaPulsante();
+      aggiornaPulsantePower();
 
       alert(
         "Errore durante l'invio del comando."
       );
     } finally {
-      comandoPowerInCorso =
-        false;
-
-      aggiornaPulsante();
+      comandoPowerInCorso = false;
+      aggiornaPulsantePower();
     }
   }
 );
 
 autoModeEl.addEventListener(
   "change",
-
   async () => {
     if (
       comandoAutomaticoInCorso
@@ -693,11 +778,11 @@ autoModeEl.addEventListener(
       return;
     }
 
-    const nuovoStato =
-      autoModeEl.checked;
-
     const statoPrecedente =
       automaticoAttivo;
+
+    const nuovoStato =
+      autoModeEl.checked;
 
     comandoAutomaticoInCorso =
       true;
@@ -705,23 +790,18 @@ autoModeEl.addEventListener(
     automaticoAttivo =
       nuovoStato;
 
-    autoModeEl.disabled =
-      true;
+    autoModeEl.disabled = true;
 
     try {
       await update(
         climaRef,
         {
-          automatico:
-            nuovoStato,
-
+          automatico: nuovoStato,
           "programmazione/abilitata":
             nuovoStato
               ? false
-              : (
-                  scheduleEnabledEl
-                    ?.checked === true
-                )
+              : scheduleEnabledEl
+                  .checked
         }
       );
     } catch (errore) {
@@ -743,35 +823,35 @@ autoModeEl.addEventListener(
       comandoAutomaticoInCorso =
         false;
 
-      autoModeEl.disabled =
-        false;
+      autoModeEl.disabled = false;
     }
   }
 );
 
 saveSettingsEl.addEventListener(
   "click",
-
   async () => {
-    if (salvataggioInCorso) {
+    if (
+      salvataggioSoglieInCorso
+    ) {
       return;
     }
 
     const sogliaAccensione =
-      parseFloat(
+      Number.parseFloat(
         tempOnEl.value
       );
 
     const sogliaSpegnimento =
-      parseFloat(
+      Number.parseFloat(
         tempOffEl.value
       );
 
     if (
-      Number.isNaN(
+      !Number.isFinite(
         sogliaAccensione
       ) ||
-      Number.isNaN(
+      !Number.isFinite(
         sogliaSpegnimento
       )
     ) {
@@ -806,7 +886,7 @@ saveSettingsEl.addEventListener(
       return;
     }
 
-    salvataggioInCorso =
+    salvataggioSoglieInCorso =
       true;
 
     saveSettingsEl.disabled =
@@ -832,7 +912,7 @@ saveSettingsEl.addEventListener(
       );
     } catch (errore) {
       console.error(
-        "Errore salvataggio:",
+        "Errore salvataggio soglie:",
         errore
       );
 
@@ -840,7 +920,7 @@ saveSettingsEl.addEventListener(
         "Errore durante il salvataggio."
       );
     } finally {
-      salvataggioInCorso =
+      salvataggioSoglieInCorso =
         false;
 
       saveSettingsEl.disabled =
@@ -852,123 +932,156 @@ saveSettingsEl.addEventListener(
   }
 );
 
-if (addScheduleEl) {
-  addScheduleEl.addEventListener(
-    "click",
+addScheduleEl.addEventListener(
+  "click",
+  () => {
+    if (
+      scheduleRowsEl.children.length >=
+      MAX_EVENTI
+    ) {
+      alert(
+        "Puoi inserire al massimo 10 eventi."
+      );
 
-    () => {
-      creaRigaEvento({
-        ora: 12,
-        minuto: 0,
-        azione:
-          scheduleRowsEl
-            .children
-            .length % 2 === 0
-      });
+      return;
     }
-  );
-}
 
-if (saveScheduleEl) {
-  saveScheduleEl.addEventListener(
-    "click",
+    creaRigaEvento({
+      ora: 12,
+      minuto: 0,
+      azione:
+        scheduleRowsEl.children
+          .length %
+          2 ===
+        0
+    });
+  }
+);
 
-    async () => {
+saveScheduleEl.addEventListener(
+  "click",
+  async () => {
+    if (
+      salvataggioProgrammaInCorso
+    ) {
+      return;
+    }
+
+    const eventi =
+      leggiEventiInterfaccia();
+
+    if (eventi.length === 0) {
+      alert(
+        "Aggiungi almeno un evento."
+      );
+
+      return;
+    }
+
+    const orariDuplicati =
+      new Set();
+
+    for (const evento of eventi) {
+      const chiave =
+        `${evento.ora}:${evento.minuto}`;
+
       if (
-        salvataggioProgrammaInCorso
-      ) {
-        return;
-      }
-
-      const eventi =
-        leggiEventiInterfaccia();
-
-      if (
-        eventi.length === 0
+        orariDuplicati.has(chiave)
       ) {
         alert(
-          "Aggiungi almeno un evento."
+          "Non puoi inserire due eventi allo stesso orario."
         );
 
         return;
       }
 
-      salvataggioProgrammaInCorso =
-        true;
+      orariDuplicati.add(chiave);
+    }
 
-      saveScheduleEl.disabled =
-        true;
+    salvataggioProgrammaInCorso =
+      true;
 
-      addScheduleEl.disabled =
-        true;
+    saveScheduleEl.disabled =
+      true;
 
-      const testoOriginale =
-        saveScheduleEl.textContent;
+    addScheduleEl.disabled =
+      true;
 
-      saveScheduleEl.textContent =
-        "SALVATAGGIO...";
+    scheduleEnabledEl.disabled =
+      true;
 
-      const eventiFirebase = {};
+    const testoOriginale =
+      saveScheduleEl.textContent;
 
-      eventi.forEach(
-        (evento, indice) => {
-          eventiFirebase[indice] =
-            evento;
+    saveScheduleEl.textContent =
+      "SALVATAGGIO...";
+
+    const eventiFirebase = {};
+
+    eventi.forEach(
+      (evento, indice) => {
+        eventiFirebase[indice] =
+          evento;
+      }
+    );
+
+    try {
+      await update(
+        climaRef,
+        {
+          automatico:
+            scheduleEnabledEl.checked
+              ? false
+              : automaticoAttivo,
+
+          programmazione: {
+            abilitata:
+              scheduleEnabledEl.checked,
+
+            eventi:
+              eventiFirebase
+          }
         }
       );
 
-      try {
-        await update(
-          climaRef,
-          {
-            automatico:
-              scheduleEnabledEl
-                .checked
-                ? false
-                : automaticoAttivo,
+      alert(
+        "Programmazione salvata."
+      );
+    } catch (errore) {
+      console.error(
+        "Errore programmazione:",
+        errore
+      );
 
-            programmazione: {
-              abilitata:
-                scheduleEnabledEl
-                  .checked,
+      alert(
+        "Errore durante il salvataggio della programmazione."
+      );
+    } finally {
+      salvataggioProgrammaInCorso =
+        false;
 
-              eventi:
-                eventiFirebase
-            }
-          }
-        );
+      saveScheduleEl.disabled =
+        false;
 
-        alert(
-          "Programmazione salvata."
-        );
-      } catch (errore) {
-        console.error(
-          "Errore programmazione:",
-          errore
-        );
+      addScheduleEl.disabled =
+        false;
 
-        alert(
-          "Errore durante il salvataggio della programmazione."
-        );
-      } finally {
-        salvataggioProgrammaInCorso =
-          false;
+      scheduleEnabledEl.disabled =
+        false;
 
-        saveScheduleEl.disabled =
-          false;
-
-        addScheduleEl.disabled =
-          false;
-
-        saveScheduleEl.textContent =
-          testoOriginale;
-      }
+      saveScheduleEl.textContent =
+        testoOriginale;
     }
-  );
-}
+  }
+);
 
 setInterval(
-  aggiornaStato,
+  () => {
+    aggiornaStatoOnline();
+
+    if (!esp32Online) {
+      nascondiValoriSensori();
+    }
+  },
   1000
 );
-console.log("SCRIPT VERSIONE 10");
