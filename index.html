@@ -12,55 +12,33 @@
 
   <title>Camera Ascanio</title>
 
-  <link rel="stylesheet" href="./style.css?v=20">
+  <link rel="stylesheet" href="./style.css?v=7">
 </head>
 
 <body>
   <main class="dashboard">
 
     <header class="page-header">
-      <p class="eyebrow">
-        CASA LUCIO ELENA
-      </p>
+      <p class="eyebrow">CASA LUCIO ELENA</p>
 
-      <h1>
-        CAMERA ASCANIO
-      </h1>
+      <h1>CAMERA ASCANIO</h1>
 
       <p class="subtitle">
         Controllo ambientale e climatizzatore
       </p>
     </header>
 
-    <section
-      class="cards"
-      aria-label="Dati ambientali"
-    >
+    <section class="cards" aria-label="Dati ambientali">
 
-      <article
-        class="card sensor-card temperature-card"
-        id="temperatureCard"
-      >
-        <div
-          class="icon"
-          aria-hidden="true"
-        >
-          🌡️
-        </div>
+      <article class="card sensor-card temperature-card">
+        <div class="icon" aria-hidden="true">🌡️</div>
 
         <div class="sensor-content">
-          <p class="label">
-            Temperatura
-          </p>
+          <p class="label">Temperatura</p>
 
           <p class="value">
-            <span id="temperatura">
-              --
-            </span>
-
-            <span class="unit">
-              °C
-            </span>
+            <span id="temperatura">--</span>
+            <span class="unit">°C</span>
           </p>
 
           <p class="sensor-note">
@@ -69,30 +47,15 @@
         </div>
       </article>
 
-      <article
-        class="card sensor-card humidity-card"
-        id="humidityCard"
-      >
-        <div
-          class="icon"
-          aria-hidden="true"
-        >
-          💧
-        </div>
+      <article class="card sensor-card humidity-card">
+        <div class="icon" aria-hidden="true">💧</div>
 
         <div class="sensor-content">
-          <p class="label">
-            Umidità
-          </p>
+          <p class="label">Umidità</p>
 
           <p class="value">
-            <span id="umidita">
-              --
-            </span>
-
-            <span class="unit">
-              %
-            </span>
+            <span id="umidita">--</span>
+            <span class="unit">%</span>
           </p>
 
           <p class="sensor-note">
@@ -106,61 +69,29 @@
     <section class="status-card connection-card">
 
       <div class="status-row">
-
         <span
           id="statusDot"
-          class="status-dot offline"
+          class="status-dot"
           aria-hidden="true"
         ></span>
 
         <strong id="stato">
-          ESP32 offline
+          Connessione...
         </strong>
-
       </div>
 
       <div class="details">
 
         <p>
           Segnale Wi-Fi:
-
           <strong>
-            <span id="rssi">
-              --
-            </span>
-
-            dBm
+            <span id="rssi">--</span> dBm
           </strong>
         </p>
 
         <p>
           Ultimo dato ricevuto:
-
           <strong id="ultimoAggiornamento">
-            --
-          </strong>
-        </p>
-
-        <p>
-          Indirizzo IP:
-
-          <strong id="indirizzoIp">
-            --
-          </strong>
-        </p>
-
-        <p>
-          Uptime:
-
-          <strong id="uptime">
-            --
-          </strong>
-        </p>
-
-        <p>
-          Firmware:
-
-          <strong id="firmware">
             --
           </strong>
         </p>
@@ -184,9 +115,7 @@
         </div>
 
         <div class="power-badge">
-          <span>
-            Stato
-          </span>
+          <span>Stato</span>
 
           <strong id="powerState">
             SPENTO
@@ -218,14 +147,12 @@
         </div>
 
         <label class="switch">
-
           <input
             type="checkbox"
             id="autoMode"
           >
 
           <span class="switch-slider"></span>
-
         </label>
 
       </div>
@@ -321,63 +248,6 @@
         SALVA IMPOSTAZIONI
       </button>
 
-      <div class="divider"></div>
-
-      <div class="automatic-header">
-
-        <div>
-          <p class="section-kicker">
-            Pianificazione
-          </p>
-
-          <h3>
-            Programmazione giornaliera
-          </h3>
-        </div>
-
-        <label class="switch">
-
-          <input
-            type="checkbox"
-            id="scheduleEnabled"
-          >
-
-          <span class="switch-slider"></span>
-
-        </label>
-
-      </div>
-
-      <p class="automatic-description">
-        Programma fino a dieci accensioni o spegnimenti
-        nell'arco delle 24 ore.
-      </p>
-
-      <div
-        id="scheduleRows"
-        class="schedule-rows"
-      ></div>
-
-      <div class="schedule-actions">
-
-        <button
-          id="addSchedule"
-          class="secondary-button"
-          type="button"
-        >
-          + AGGIUNGI EVENTO
-        </button>
-
-        <button
-          id="saveSchedule"
-          class="primary-button"
-          type="button"
-        >
-          SALVA PROGRAMMAZIONE
-        </button>
-
-      </div>
-
     </section>
 
     <p
@@ -390,7 +260,7 @@
 
   <script
     type="module"
-    src="./script.js?v=20"
+    src="./script.js?v=7"
   ></script>
 </body>
 </html>
