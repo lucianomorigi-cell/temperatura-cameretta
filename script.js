@@ -971,3 +971,4 @@ setInterval(
   aggiornaStato,
   1000
 );
+console.log("SCRIPT VERSIONE 10");
