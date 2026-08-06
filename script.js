@@ -31,7 +31,7 @@ const climaRef = ref(
   "dispositivi/cameretta/climatizzatore"
 );
 
-const TEMPO_OFFLINE_MS = 5000;
+const TEMPO_OFFLINE_MS = 15000;
 
 const temperaturaEl =
   document.getElementById("temperatura");
@@ -80,20 +80,20 @@ let comandoAutomaticoInCorso = false;
 let salvataggioInCorso = false;
 
 function mostraValori(dati) {
-  temperaturaEl.textContent =
-    typeof dati.temperatura === "number"
-      ? dati.temperatura.toFixed(1)
-      : "--";
+  if (typeof dati.temperatura === "number") {
+    temperaturaEl.textContent =
+      dati.temperatura.toFixed(1);
+  }
 
-  umiditaEl.textContent =
-    typeof dati.umidita === "number"
-      ? dati.umidita.toFixed(0)
-      : "--";
+  if (typeof dati.umidita === "number") {
+    umiditaEl.textContent =
+      dati.umidita.toFixed(0);
+  }
 
-  rssiEl.textContent =
-    typeof dati.rssi === "number"
-      ? dati.rssi
-      : "--";
+  if (typeof dati.rssi === "number") {
+    rssiEl.textContent =
+      dati.rssi;
+  }
 }
 
 function nascondiValori() {
@@ -114,8 +114,6 @@ function mostraOffline() {
 
   statusDotEl.classList.remove("online");
   statusDotEl.classList.add("offline");
-
-  nascondiValori();
 }
 
 function aggiornaStato() {
@@ -137,8 +135,9 @@ function aggiornaStato() {
   ultimoAggiornamentoEl.textContent =
     new Date(timestamp).toLocaleString("it-IT");
 
+  mostraValori(ultimiDati);
+
   if (tempoTrascorso <= TEMPO_OFFLINE_MS) {
-    mostraValori(ultimiDati);
     mostraOnline();
   } else {
     mostraOffline();
@@ -169,9 +168,9 @@ onValue(
   sensoreRef,
 
   (snapshot) => {
-    ultimiDati = snapshot.val();
+    const nuoviDati = snapshot.val();
 
-    if (!ultimiDati) {
+    if (!nuoviDati) {
       erroreEl.hidden = false;
 
       erroreEl.textContent =
@@ -180,6 +179,11 @@ onValue(
       aggiornaStato();
       return;
     }
+
+    ultimiDati = {
+      ...(ultimiDati || {}),
+      ...nuoviDati
+    };
 
     erroreEl.hidden = true;
 
@@ -197,9 +201,7 @@ onValue(
     erroreEl.textContent =
       "Impossibile leggere i dati da Firebase.";
 
-    ultimiDati = null;
-
-    aggiornaStato();
+    mostraOffline();
   }
 );
 
