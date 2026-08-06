@@ -12,7 +12,7 @@
 
   <title>Camera Ascanio</title>
 
-  <link rel="stylesheet" href="./style.css?v=7">
+  <link rel="stylesheet" href="./style.css?v=8">
 </head>
 
 <body>
@@ -248,6 +248,57 @@
         SALVA IMPOSTAZIONI
       </button>
 
+      <div class="divider"></div>
+
+      <div class="automatic-header">
+
+        <div>
+          <p class="section-kicker">
+            Pianificazione
+          </p>
+
+          <h3>
+            Programmazione giornaliera
+          </h3>
+        </div>
+
+        <label class="switch">
+          <input
+            type="checkbox"
+            id="scheduleEnabled"
+          >
+
+          <span class="switch-slider"></span>
+        </label>
+
+      </div>
+
+      <p class="automatic-description">
+        Programma accensioni e spegnimenti automatici
+        nell'arco delle 24 ore.
+      </p>
+
+      <div
+        id="scheduleRows"
+        class="schedule-rows"
+      ></div>
+
+      <button
+        id="addSchedule"
+        class="secondary-button"
+        type="button"
+      >
+        + AGGIUNGI EVENTO
+      </button>
+
+      <button
+        id="saveSchedule"
+        class="primary-button"
+        type="button"
+      >
+        SALVA PROGRAMMAZIONE
+      </button>
+
     </section>
 
     <p
@@ -260,7 +311,7 @@
 
   <script
     type="module"
-    src="./script.js?v=7"
+    src="./script.js?v=8"
   ></script>
 </body>
 </html>
