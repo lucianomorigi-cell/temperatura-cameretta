@@ -1,19 +1,22 @@
 <!DOCTYPE html>
 <html lang="it">
-
 <head>
   <meta charset="UTF-8">
-
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1.0"
   >
-
-  <meta name="theme-color" content="#0b1020">
+  <meta
+    name="theme-color"
+    content="#0b1020"
+  >
 
   <title>Camera Ascanio</title>
 
-  <link rel="stylesheet" href="./style.css?v=7">
+  <link
+    rel="stylesheet"
+    href="styles.css"
+  >
 </head>
 
 <body>
@@ -38,7 +41,7 @@
 
 
     <!-- ========================================
-         TEMPERATURA E UMIDITÀ
+         TEMPERATURA, TREND E UMIDITÀ
          ======================================== -->
 
     <section
@@ -82,6 +85,58 @@
         </div>
 
       </article>
+
+
+      <!-- TREND TEMPERATURA -->
+
+      <aside
+        class="trend-card"
+        aria-label="Trend della temperatura"
+      >
+
+        <div
+          class="trend-icon"
+          aria-hidden="true"
+          title="Verso il caldo"
+        >
+          ☀️
+        </div>
+
+        <div class="trend-center">
+
+          <div
+            id="trendArrow"
+            class="trend-arrow stable"
+            aria-hidden="true"
+          >
+            •
+          </div>
+
+          <p
+            id="trendText"
+            class="trend-text"
+          >
+            Trend in attesa
+          </p>
+
+          <p
+            id="trendDelta"
+            class="trend-delta"
+          >
+            --
+          </p>
+
+        </div>
+
+        <div
+          class="trend-icon"
+          aria-hidden="true"
+          title="Verso il freddo"
+        >
+          ❄️
+        </div>
+
+      </aside>
 
 
       <article
@@ -182,6 +237,76 @@
 
 
     <!-- ========================================
+         GRAFICO ULTIME 12 ORE
+         ======================================== -->
+
+    <section
+      class="status-card history-card"
+      aria-labelledby="historyTitle"
+    >
+
+      <div class="chart-heading">
+
+        <div>
+
+          <p class="section-kicker">
+            Storico ambientale
+          </p>
+
+          <h2 id="historyTitle">
+            📈 Ultime 12 ore
+          </h2>
+
+        </div>
+
+        <div
+          id="chartRange"
+          class="chart-range"
+        >
+          --
+        </div>
+
+      </div>
+
+
+      <div
+        class="chart-legend"
+        aria-label="Legenda grafico"
+      >
+
+        <span class="legend-item">
+          <span class="legend-line temperature"></span>
+          Temperatura °C
+        </span>
+
+        <span class="legend-item">
+          <span class="legend-line humidity"></span>
+          Umidità %
+        </span>
+
+      </div>
+
+
+      <div class="history-chart-wrap">
+
+        <div
+          id="historyChart"
+          class="history-chart"
+        ></div>
+
+        <p
+          id="chartEmpty"
+          class="chart-empty"
+        >
+          Caricamento storico...
+        </p>
+
+      </div>
+
+    </section>
+
+
+    <!-- ========================================
          CLIMATIZZATORE
          ======================================== -->
 
@@ -231,8 +356,6 @@
       <div class="divider"></div>
 
 
-      <!-- MODALITÀ AUTOMATICA -->
-
       <div class="automatic-header">
 
         <div>
@@ -275,9 +398,6 @@
 
       <div class="threshold-grid">
 
-
-        <!-- SOGLIA ACCENSIONE -->
-
         <label
           class="threshold-field"
           for="tempOn"
@@ -287,13 +407,11 @@
             🔥
           </span>
 
-
           <span class="threshold-content">
 
             <span class="threshold-label">
               Accendi sopra
             </span>
-
 
             <span class="input-wrapper">
 
@@ -318,8 +436,6 @@
         </label>
 
 
-        <!-- SOGLIA SPEGNIMENTO -->
-
         <label
           class="threshold-field"
           for="tempOff"
@@ -329,13 +445,11 @@
             ❄️
           </span>
 
-
           <span class="threshold-content">
 
             <span class="threshold-label">
               Spegni sotto
             </span>
-
 
             <span class="input-wrapper">
 
@@ -406,11 +520,6 @@
       </p>
 
 
-      <!--
-        Qui JavaScript inserirà automaticamente
-        le card dei programmi presenti su Firebase.
-      -->
-
       <div
         id="programList"
         class="program-list"
@@ -434,10 +543,6 @@
     </section>
 
 
-    <!-- ========================================
-         MESSAGGI DI ERRORE
-         ======================================== -->
-
     <p
       id="errore"
       class="error"
@@ -449,9 +554,8 @@
 
   <script
     type="module"
-    src="./script.js?v=7"
+    src="app.js"
   ></script>
 
 </body>
-
 </html>
