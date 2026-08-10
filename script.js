@@ -40,17 +40,8 @@ const programmiRef = ref(
   "dispositivi/cameretta/programmi"
 );
 
-const storicoRef = ref(
-  database,
-  "storico/cameretta"
-);
-
 
 const TEMPO_OFFLINE_MS = 5000;
-const FINESTRA_GRAFICO_MS = 12 * 60 * 60 * 1000;
-const INTERVALLO_STORICO_MS = 2 * 60 * 1000;
-const CONSERVAZIONE_STORICO_MS = 24 * 60 * 60 * 1000;
-const SOGLIA_TREND_C = 0.15;
 
 const NOMI_GIORNI = [
   "Dom",
@@ -108,24 +99,6 @@ const programListEl =
 const addProgramButtonEl =
   document.getElementById("addProgramButton");
 
-const trendArrowEl =
-  document.getElementById("trendArrow");
-
-const trendTextEl =
-  document.getElementById("trendText");
-
-const trendDeltaEl =
-  document.getElementById("trendDelta");
-
-const historyChartEl =
-  document.getElementById("historyChart");
-
-const chartEmptyEl =
-  document.getElementById("chartEmpty");
-
-const chartRangeEl =
-  document.getElementById("chartRange");
-
 
 let ultimiDati = null;
 
@@ -139,12 +112,6 @@ let salvataggioInCorso = false;
 let programmi = {};
 let programmaInModifica = null;
 let salvataggioProgrammaInCorso = false;
-
-let storico = [];
-let temperatureRecenti = [];
-let ultimoTimestampSensoreVisto = null;
-let ultimoTimestampStoricoSalvato = 0;
-let puliziaStoricoEseguita = false;
 
 
 /* =========================================================
@@ -235,341 +202,6 @@ function aggiornaStato() {
 
     mostraOffline();
   }
-}
-
-
-/* =========================================================
-   TREND TEMPERATURA E STORICO 12 ORE
-   ========================================================= */
-
-function registraTemperaturaRecente(dati) {
-
-  if (
-    !dati ||
-    typeof dati.temperatura !== "number" ||
-    typeof dati.ultimoAggiornamento !== "number"
-  ) {
-    return;
-  }
-
-  if (dati.ultimoAggiornamento === ultimoTimestampSensoreVisto) {
-    return;
-  }
-
-  ultimoTimestampSensoreVisto = dati.ultimoAggiornamento;
-
-  temperatureRecenti.push({
-    timestamp: dati.ultimoAggiornamento,
-    temperatura: dati.temperatura
-  });
-
-  const limite = Date.now() - (30 * 60 * 1000);
-
-  temperatureRecenti = temperatureRecenti
-    .filter((punto) => punto.timestamp >= limite)
-    .slice(-20);
-
-  aggiornaTrend();
-}
-
-
-function aggiornaTrend() {
-
-  if (!trendArrowEl || !trendTextEl || !trendDeltaEl) {
-    return;
-  }
-
-  let campioni = temperatureRecenti;
-
-  if (campioni.length < 2) {
-    campioni = storico
-      .filter((punto) => punto.timestamp >= Date.now() - (30 * 60 * 1000))
-      .map((punto) => ({
-        timestamp: punto.timestamp,
-        temperatura: punto.temperatura
-      }));
-  }
-
-  if (campioni.length < 2) {
-    trendArrowEl.textContent = "•";
-    trendArrowEl.className = "trend-arrow stable";
-    trendTextEl.textContent = "Trend in attesa";
-    trendDeltaEl.textContent = "--";
-    return;
-  }
-
-  const primo = campioni[0].temperatura;
-  const ultimo = campioni[campioni.length - 1].temperatura;
-  const delta = ultimo - primo;
-
-  trendDeltaEl.textContent = `${delta >= 0 ? "+" : ""}${delta.toFixed(1)} °C`;
-
-  if (delta > SOGLIA_TREND_C) {
-    trendArrowEl.textContent = "↑";
-    trendArrowEl.className = "trend-arrow warming";
-    trendTextEl.textContent = "Verso il caldo";
-    return;
-  }
-
-  if (delta < -SOGLIA_TREND_C) {
-    trendArrowEl.textContent = "↓";
-    trendArrowEl.className = "trend-arrow cooling";
-    trendTextEl.textContent = "Verso il freddo";
-    return;
-  }
-
-  trendArrowEl.textContent = "↔";
-  trendArrowEl.className = "trend-arrow stable";
-  trendTextEl.textContent = "Temperatura stabile";
-}
-
-
-async function salvaPuntoStorico(dati) {
-
-  if (
-    !dati ||
-    typeof dati.temperatura !== "number" ||
-    typeof dati.umidita !== "number" ||
-    typeof dati.ultimoAggiornamento !== "number"
-  ) {
-    return;
-  }
-
-  const timestamp = dati.ultimoAggiornamento;
-
-  if (timestamp <= ultimoTimestampStoricoSalvato) {
-    return;
-  }
-
-  if (
-    ultimoTimestampStoricoSalvato > 0 &&
-    timestamp - ultimoTimestampStoricoSalvato < INTERVALLO_STORICO_MS
-  ) {
-    return;
-  }
-
-  ultimoTimestampStoricoSalvato = timestamp;
-
-  try {
-
-    const puntoRef = ref(
-      database,
-      `storico/cameretta/${timestamp}`
-    );
-
-    await set(puntoRef, {
-      timestamp,
-      temperatura: Number(dati.temperatura.toFixed(2)),
-      umidita: Number(dati.umidita.toFixed(2))
-    });
-
-  } catch (errore) {
-
-    console.error(
-      "Errore salvataggio storico:",
-      errore
-    );
-  }
-}
-
-
-function normalizzaStorico(valore) {
-
-  if (!valore || typeof valore !== "object") {
-    return [];
-  }
-
-  return Object.values(valore)
-    .filter((punto) =>
-      punto &&
-      typeof punto.timestamp === "number" &&
-      typeof punto.temperatura === "number" &&
-      typeof punto.umidita === "number"
-    )
-    .sort((a, b) => a.timestamp - b.timestamp);
-}
-
-
-async function pulisciStoricoVecchio(punti) {
-
-  if (puliziaStoricoEseguita) {
-    return;
-  }
-
-  puliziaStoricoEseguita = true;
-
-  const limite = Date.now() - CONSERVAZIONE_STORICO_MS;
-  const vecchi = punti.filter((punto) => punto.timestamp < limite);
-
-  for (const punto of vecchi.slice(0, 100)) {
-
-    try {
-      await remove(
-        ref(database, `storico/cameretta/${punto.timestamp}`)
-      );
-    } catch (errore) {
-      console.warn("Pulizia storico non riuscita:", errore);
-      break;
-    }
-  }
-}
-
-
-function formattaOra(timestamp) {
-
-  return new Date(timestamp).toLocaleTimeString(
-    "it-IT",
-    {
-      hour: "2-digit",
-      minute: "2-digit"
-    }
-  );
-}
-
-
-function creaPercorso(punti, x, y, chiave) {
-
-  return punti
-    .map((punto, indice) => {
-      const comando = indice === 0 ? "M" : "L";
-      return `${comando}${x(punto.timestamp).toFixed(1)},${y(punto[chiave]).toFixed(1)}`;
-    })
-    .join(" ");
-}
-
-
-function disegnaGrafico() {
-
-  if (!historyChartEl) {
-    return;
-  }
-
-  const adesso = Date.now();
-  const inizio = adesso - FINESTRA_GRAFICO_MS;
-
-  const punti = storico.filter(
-    (punto) => punto.timestamp >= inizio && punto.timestamp <= adesso
-  );
-
-  if (chartRangeEl) {
-    chartRangeEl.textContent = `${formattaOra(inizio)} – ${formattaOra(adesso)}`;
-  }
-
-  if (punti.length < 2) {
-    historyChartEl.innerHTML = "";
-    if (chartEmptyEl) {
-      chartEmptyEl.hidden = false;
-      chartEmptyEl.textContent = "Lo storico si sta popolando. Servono almeno due rilevazioni per disegnare il grafico.";
-    }
-    return;
-  }
-
-  if (chartEmptyEl) {
-    chartEmptyEl.hidden = true;
-  }
-
-  const width = 760;
-  const height = 330;
-  const margin = {
-    top: 24,
-    right: 56,
-    bottom: 48,
-    left: 56
-  };
-
-  const plotW = width - margin.left - margin.right;
-  const plotH = height - margin.top - margin.bottom;
-
-  const temperature = punti.map((punto) => punto.temperatura);
-  const umidita = punti.map((punto) => punto.umidita);
-
-  let tMin = Math.floor(Math.min(...temperature) - 1);
-  let tMax = Math.ceil(Math.max(...temperature) + 1);
-
-  if (tMax - tMin < 4) {
-    const centro = (tMax + tMin) / 2;
-    tMin = Math.floor(centro - 2);
-    tMax = Math.ceil(centro + 2);
-  }
-
-  let hMin = Math.max(0, Math.floor(Math.min(...umidita) - 5));
-  let hMax = Math.min(100, Math.ceil(Math.max(...umidita) + 5));
-
-  if (hMax - hMin < 20) {
-    const centro = (hMax + hMin) / 2;
-    hMin = Math.max(0, Math.floor(centro - 10));
-    hMax = Math.min(100, Math.ceil(centro + 10));
-  }
-
-  const x = (timestamp) =>
-    margin.left + ((timestamp - inizio) / FINESTRA_GRAFICO_MS) * plotW;
-
-  const yTemp = (valore) =>
-    margin.top + (1 - ((valore - tMin) / (tMax - tMin))) * plotH;
-
-  const yHum = (valore) =>
-    margin.top + (1 - ((valore - hMin) / (hMax - hMin))) * plotH;
-
-  const griglia = [];
-  const etichetteX = [];
-  const etichetteTemp = [];
-  const etichetteHum = [];
-
-  for (let i = 0; i <= 4; i++) {
-    const yPos = margin.top + (plotH * i / 4);
-    griglia.push(
-      `<line x1="${margin.left}" y1="${yPos}" x2="${width - margin.right}" y2="${yPos}" class="chart-grid-line" />`
-    );
-
-    const tempVal = tMax - ((tMax - tMin) * i / 4);
-    const humVal = hMax - ((hMax - hMin) * i / 4);
-
-    etichetteTemp.push(
-      `<text x="${margin.left - 10}" y="${yPos + 4}" text-anchor="end" class="chart-axis-label temp-label">${tempVal.toFixed(0)}°</text>`
-    );
-
-    etichetteHum.push(
-      `<text x="${width - margin.right + 10}" y="${yPos + 4}" text-anchor="start" class="chart-axis-label hum-label">${humVal.toFixed(0)}%</text>`
-    );
-  }
-
-  for (let i = 0; i <= 6; i++) {
-    const ts = inizio + (FINESTRA_GRAFICO_MS * i / 6);
-    const xPos = x(ts);
-
-    griglia.push(
-      `<line x1="${xPos}" y1="${margin.top}" x2="${xPos}" y2="${height - margin.bottom}" class="chart-grid-line vertical" />`
-    );
-
-    etichetteX.push(
-      `<text x="${xPos}" y="${height - 18}" text-anchor="middle" class="chart-axis-label">${formattaOra(ts)}</text>`
-    );
-  }
-
-  const tempPath = creaPercorso(punti, x, yTemp, "temperatura");
-  const humPath = creaPercorso(punti, x, yHum, "umidita");
-
-  const ultimo = punti[punti.length - 1];
-
-  historyChartEl.innerHTML = `
-    <svg
-      class="history-svg"
-      viewBox="0 0 ${width} ${height}"
-      role="img"
-      aria-label="Grafico della temperatura e dell'umidità nelle ultime 12 ore"
-    >
-      ${griglia.join("")}
-      ${etichetteX.join("")}
-      ${etichetteTemp.join("")}
-      ${etichetteHum.join("")}
-
-      <path d="${tempPath}" class="chart-line chart-line-temp" />
-      <path d="${humPath}" class="chart-line chart-line-hum" />
-
-      <circle cx="${x(ultimo.timestamp)}" cy="${yTemp(ultimo.temperatura)}" r="4.5" class="chart-point chart-point-temp" />
-      <circle cx="${x(ultimo.timestamp)}" cy="${yHum(ultimo.umidita)}" r="4.5" class="chart-point chart-point-hum" />
-    </svg>
-  `;
 }
 
 
@@ -1483,10 +1115,6 @@ onValue(
       snapshot.val();
 
 
-    registraTemperaturaRecente(ultimiDati);
-    salvaPuntoStorico(ultimiDati);
-
-
     if (!ultimiDati) {
 
       erroreEl.hidden = false;
@@ -1523,45 +1151,6 @@ onValue(
     ultimiDati = null;
 
     aggiornaStato();
-  }
-);
-
-
-/* =========================================================
-   LETTURA STORICO FIREBASE
-   ========================================================= */
-
-onValue(
-  storicoRef,
-
-  (snapshot) => {
-
-    const tuttiIPunti =
-      normalizzaStorico(snapshot.val());
-
-    storico = tuttiIPunti.filter(
-      (punto) => punto.timestamp >= Date.now() - FINESTRA_GRAFICO_MS
-    );
-
-    if (storico.length > 0) {
-      ultimoTimestampStoricoSalvato = Math.max(
-        ultimoTimestampStoricoSalvato,
-        storico[storico.length - 1].timestamp
-      );
-    }
-
-    aggiornaTrend();
-    disegnaGrafico();
-    pulisciStoricoVecchio(tuttiIPunti);
-  },
-
-  (errore) => {
-    console.error("Errore lettura storico:", errore);
-
-    if (chartEmptyEl) {
-      chartEmptyEl.hidden = false;
-      chartEmptyEl.textContent = "Impossibile leggere lo storico da Firebase.";
-    }
   }
 );
 
@@ -1982,19 +1571,6 @@ if (programListEl) {
     }
   );
 }
-
-
-window.addEventListener(
-  "resize",
-  () => {
-    disegnaGrafico();
-  }
-);
-
-setInterval(
-  disegnaGrafico,
-  60 * 1000
-);
 
 
 /* =========================================================
