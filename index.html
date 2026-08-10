@@ -1,20 +1,19 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="it">
 
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
 
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1.0"
   >
 
+  <meta name="theme-color" content="#0b1020">
+
   <title>Camera Ascanio</title>
 
-  <link
-    rel="stylesheet"
-    href="style.css?v=3"
-  >
+  <link rel="stylesheet" href="./style.css?v=7">
 </head>
 
 <body>
@@ -37,6 +36,10 @@
 
     </header>
 
+
+    <!-- ========================================
+         TEMPERATURA E UMIDITÀ
+         ======================================== -->
 
     <section
       class="cards"
@@ -81,37 +84,6 @@
       </article>
 
 
-      <div
-        id="trendIndicator"
-        class="trend-indicator trend-waiting"
-        aria-label="Trend temperatura ultimi 3 minuti"
-      >
-
-        <span
-          class="trend-sun"
-          aria-hidden="true"
-        >
-          ☀️
-        </span>
-
-        <span
-          id="trendArrow"
-          class="trend-arrow"
-          aria-hidden="true"
-        >
-          —
-        </span>
-
-        <span
-          class="trend-snow"
-          aria-hidden="true"
-        >
-          ❄️
-        </span>
-
-      </div>
-
-
       <article
         class="card sensor-card humidity-card"
       >
@@ -152,81 +124,9 @@
     </section>
 
 
-    <section
-      class="status-card history-card"
-      aria-label="Storico temperatura e umidità"
-    >
-
-      <div class="history-header">
-
-        <div>
-
-          <p class="section-kicker">
-            Storico
-          </p>
-
-          <h2>
-            Ultime 12 ore
-          </h2>
-
-        </div>
-
-
-        <div class="history-legend">
-
-          <span class="history-legend-item">
-
-            <span
-              class="history-legend-dot temperature"
-              aria-hidden="true"
-            ></span>
-
-            Temperatura
-
-          </span>
-
-
-          <span class="history-legend-item">
-
-            <span
-              class="history-legend-dot humidity"
-              aria-hidden="true"
-            ></span>
-
-            Umidità
-
-          </span>
-
-        </div>
-
-      </div>
-
-
-      <div class="history-chart-wrap">
-
-        <canvas
-          id="historyChart"
-          role="img"
-          aria-label="Grafico delle ultime 12 ore"
-        ></canvas>
-
-        <p
-          id="historyEmpty"
-          class="history-empty"
-        >
-          In attesa dei campionamenti...
-        </p>
-
-        <div
-          id="historyTooltip"
-          class="history-tooltip"
-          hidden
-        ></div>
-
-      </div>
-
-    </section>
-
+    <!-- ========================================
+         STATO ESP32
+         ======================================== -->
 
     <section
       class="status-card connection-card"
@@ -250,28 +150,40 @@
       <div class="details">
 
         <p>
+
           Segnale Wi-Fi:
 
           <strong>
+
             <span id="rssi">
               --
             </span>
+
             dBm
+
           </strong>
+
         </p>
 
+
         <p>
+
           Ultimo dato ricevuto:
 
           <strong id="ultimoAggiornamento">
             --
           </strong>
+
         </p>
 
       </div>
 
     </section>
 
+
+    <!-- ========================================
+         CLIMATIZZATORE
+         ======================================== -->
 
     <section
       class="status-card climate-card"
@@ -280,6 +192,7 @@
       <div class="section-heading">
 
         <div>
+
           <p class="section-kicker">
             Controllo
           </p>
@@ -287,9 +200,12 @@
           <h2>
             ❄️ Climatizzatore
           </h2>
+
         </div>
 
+
         <div class="power-badge">
+
           <span>
             Stato
           </span>
@@ -297,6 +213,7 @@
           <strong id="powerState">
             SPENTO
           </strong>
+
         </div>
 
       </div>
@@ -314,9 +231,12 @@
       <div class="divider"></div>
 
 
+      <!-- MODALITÀ AUTOMATICA -->
+
       <div class="automatic-header">
 
         <div>
+
           <p class="section-kicker">
             Regolazione
           </p>
@@ -324,9 +244,12 @@
           <h3>
             Modalità automatica
           </h3>
+
         </div>
 
+
         <label class="switch">
+
           <input
             type="checkbox"
             id="autoMode"
@@ -335,19 +258,25 @@
           <span
             class="switch-slider"
           ></span>
+
         </label>
 
       </div>
 
 
       <p class="automatic-description">
+
         Il climatizzatore si accende e si spegne
         automaticamente in base alle temperature
         impostate.
+
       </p>
 
 
       <div class="threshold-grid">
+
+
+        <!-- SOGLIA ACCENSIONE -->
 
         <label
           class="threshold-field"
@@ -358,11 +287,13 @@
             🔥
           </span>
 
+
           <span class="threshold-content">
 
             <span class="threshold-label">
               Accendi sopra
             </span>
+
 
             <span class="input-wrapper">
 
@@ -387,6 +318,8 @@
         </label>
 
 
+        <!-- SOGLIA SPEGNIMENTO -->
+
         <label
           class="threshold-field"
           for="tempOff"
@@ -396,11 +329,13 @@
             ❄️
           </span>
 
+
           <span class="threshold-content">
 
             <span class="threshold-label">
               Spegni sotto
             </span>
+
 
             <span class="input-wrapper">
 
@@ -438,6 +373,10 @@
     </section>
 
 
+    <!-- ========================================
+         PROGRAMMAZIONE ORARIA
+         ======================================== -->
+
     <section
       class="status-card schedule-card"
     >
@@ -445,6 +384,7 @@
       <div class="section-heading">
 
         <div>
+
           <p class="section-kicker">
             Automazione
           </p>
@@ -452,16 +392,24 @@
           <h2>
             🕐 Programmazione
           </h2>
+
         </div>
 
       </div>
 
 
       <p class="automatic-description">
+
         Programma gli orari di accensione e
         spegnimento del climatizzatore.
+
       </p>
 
+
+      <!--
+        Qui JavaScript inserirà automaticamente
+        le card dei programmi presenti su Firebase.
+      -->
 
       <div
         id="programList"
@@ -486,6 +434,10 @@
     </section>
 
 
+    <!-- ========================================
+         MESSAGGI DI ERRORE
+         ======================================== -->
+
     <p
       id="errore"
       class="error"
@@ -497,7 +449,7 @@
 
   <script
     type="module"
-    src="script.js?v=3"
+    src="./script.js?v=7"
   ></script>
 
 </body>
