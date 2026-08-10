@@ -1,27 +1,36 @@
+```html
 <!DOCTYPE html>
 <html lang="it">
+
 <head>
+
   <meta charset="UTF-8">
+
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1.0"
   >
-  <meta
-    name="theme-color"
-    content="#0b1020"
-  >
 
-  <title>Camera Ascanio</title>
+  <title>
+    Camera Ascanio
+  </title>
 
   <link
     rel="stylesheet"
     href="styles.css"
   >
+
 </head>
+
 
 <body>
 
   <main class="dashboard">
+
+
+    <!-- ========================================
+         INTESTAZIONE
+         ======================================== -->
 
     <header class="page-header">
 
@@ -41,13 +50,16 @@
 
 
     <!-- ========================================
-         TEMPERATURA, TREND E UMIDITÀ
+         TEMPERATURA / TREND / UMIDITÀ
          ======================================== -->
 
     <section
-      class="cards"
+      class="cards environmental-cards"
       aria-label="Dati ambientali"
     >
+
+
+      <!-- TEMPERATURA -->
 
       <article
         class="card sensor-card temperature-card"
@@ -60,11 +72,13 @@
           🌡️
         </div>
 
+
         <div class="sensor-content">
 
           <p class="label">
             Temperatura
           </p>
+
 
           <p class="value">
 
@@ -78,6 +92,7 @@
 
           </p>
 
+
           <p class="sensor-note">
             Temperatura attuale
           </p>
@@ -87,57 +102,55 @@
       </article>
 
 
-      <!-- TREND TEMPERATURA -->
+      <!-- ========================================
+           INDICATORE TREND TEMPERATURA
+           ======================================== -->
 
       <aside
-        class="trend-card"
-        aria-label="Trend della temperatura"
+        class="temperature-trend-card"
+        aria-label="Trend temperatura"
       >
 
         <div
-          class="trend-icon"
+          class="trend-hot-icon"
           aria-hidden="true"
-          title="Verso il caldo"
         >
           ☀️
         </div>
 
-        <div class="trend-center">
 
-          <div
+        <div class="trend-indicator">
+
+          <span
             id="trendArrow"
             class="trend-arrow stable"
             aria-hidden="true"
           >
-            •
-          </div>
+            ↔
+          </span>
 
-          <p
+
+          <span
             id="trendText"
             class="trend-text"
           >
-            Trend in attesa
-          </p>
-
-          <p
-            id="trendDelta"
-            class="trend-delta"
-          >
-            --
-          </p>
+            Stabile
+          </span>
 
         </div>
 
+
         <div
-          class="trend-icon"
+          class="trend-cold-icon"
           aria-hidden="true"
-          title="Verso il freddo"
         >
           ❄️
         </div>
 
       </aside>
 
+
+      <!-- UMIDITÀ -->
 
       <article
         class="card sensor-card humidity-card"
@@ -150,11 +163,13 @@
           💧
         </div>
 
+
         <div class="sensor-content">
 
           <p class="label">
             Umidità
           </p>
+
 
           <p class="value">
 
@@ -168,6 +183,7 @@
 
           </p>
 
+
           <p class="sensor-note">
             Umidità relativa
           </p>
@@ -177,6 +193,7 @@
       </article>
 
     </section>
+
 
 
     <!-- ========================================
@@ -236,16 +253,17 @@
     </section>
 
 
+
     <!-- ========================================
          GRAFICO ULTIME 12 ORE
          ======================================== -->
 
     <section
-      class="status-card history-card"
-      aria-labelledby="historyTitle"
+      class="status-card chart-card"
+      aria-labelledby="chartTitle"
     >
 
-      <div class="chart-heading">
+      <div class="section-heading">
 
         <div>
 
@@ -253,57 +271,73 @@
             Storico ambientale
           </p>
 
-          <h2 id="historyTitle">
+          <h2 id="chartTitle">
             📈 Ultime 12 ore
           </h2>
 
         </div>
 
-        <div
-          id="chartRange"
-          class="chart-range"
-        >
-          --
+      </div>
+
+
+      <p class="automatic-description">
+        Andamento della temperatura e dell'umidità
+        registrate nelle ultime 12 ore.
+      </p>
+
+
+      <div class="chart-legend">
+
+        <div class="chart-legend-item">
+
+          <span
+            class="chart-legend-dot temperature"
+            aria-hidden="true"
+          ></span>
+
+          <span>
+            Temperatura
+          </span>
+
+        </div>
+
+
+        <div class="chart-legend-item">
+
+          <span
+            class="chart-legend-dot humidity"
+            aria-hidden="true"
+          ></span>
+
+          <span>
+            Umidità
+          </span>
+
         </div>
 
       </div>
 
 
-      <div
-        class="chart-legend"
-        aria-label="Legenda grafico"
+      <div class="chart-wrapper">
+
+        <canvas
+          id="environmentChart"
+          aria-label="Grafico temperatura e umidità ultime 12 ore"
+          role="img"
+        ></canvas>
+
+      </div>
+
+
+      <p
+        id="chartEmpty"
+        class="program-empty"
       >
-
-        <span class="legend-item">
-          <span class="legend-line temperature"></span>
-          Temperatura °C
-        </span>
-
-        <span class="legend-item">
-          <span class="legend-line humidity"></span>
-          Umidità %
-        </span>
-
-      </div>
-
-
-      <div class="history-chart-wrap">
-
-        <div
-          id="historyChart"
-          class="history-chart"
-        ></div>
-
-        <p
-          id="chartEmpty"
-          class="chart-empty"
-        >
-          Caricamento storico...
-        </p>
-
-      </div>
+        Caricamento storico...
+      </p>
 
     </section>
+
 
 
     <!-- ========================================
@@ -356,6 +390,11 @@
       <div class="divider"></div>
 
 
+
+      <!-- ========================================
+           MODALITÀ AUTOMATICA
+           ======================================== -->
+
       <div class="automatic-header">
 
         <div>
@@ -398,6 +437,10 @@
 
       <div class="threshold-grid">
 
+
+
+        <!-- SOGLIA ACCENSIONE -->
+
         <label
           class="threshold-field"
           for="tempOn"
@@ -407,11 +450,13 @@
             🔥
           </span>
 
+
           <span class="threshold-content">
 
             <span class="threshold-label">
               Accendi sopra
             </span>
+
 
             <span class="input-wrapper">
 
@@ -436,6 +481,9 @@
         </label>
 
 
+
+        <!-- SOGLIA SPEGNIMENTO -->
+
         <label
           class="threshold-field"
           for="tempOff"
@@ -445,11 +493,13 @@
             ❄️
           </span>
 
+
           <span class="threshold-content">
 
             <span class="threshold-label">
               Spegni sotto
             </span>
+
 
             <span class="input-wrapper">
 
@@ -485,6 +535,7 @@
       </button>
 
     </section>
+
 
 
     <!-- ========================================
@@ -543,19 +594,41 @@
     </section>
 
 
+
+    <!-- ========================================
+         MESSAGGI DI ERRORE
+         ======================================== -->
+
     <p
       id="errore"
       class="error"
       hidden
     ></p>
 
+
   </main>
 
+
+  <!-- ========================================
+       CHART.JS
+       ======================================== -->
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"
+  ></script>
+
+
+  <!-- ========================================
+       JAVASCRIPT PRINCIPALE
+       ======================================== -->
 
   <script
     type="module"
     src="app.js"
   ></script>
 
+
 </body>
+
 </html>
+```
