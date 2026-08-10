@@ -1654,3 +1654,311 @@ h3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* =========================================================
+   TREND TEMPERATURA - AGGIUNTA
+   Non cambia la struttura delle due card originali.
+   ========================================================= */
+
+.cards {
+  position: relative;
+  gap: 54px;
+}
+
+.trend-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 5;
+
+  width: 44px;
+  height: 156px;
+  padding: 8px 3px;
+
+  transform: translate(-50%, -50%);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 999px;
+
+  background: rgba(13, 19, 38, 0.96);
+
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+
+  pointer-events: none;
+}
+
+.trend-sun,
+.trend-snow {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.trend-arrow {
+  color: #8f9ab8;
+
+  font-size: 2.15rem;
+  font-weight: 900;
+  line-height: 0.9;
+}
+
+.trend-label {
+  color: #8f9ab8;
+
+  font-size: 0.48rem;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+}
+
+.trend-delta {
+  color: #66718c;
+
+  font-size: 0.48rem;
+  font-weight: 750;
+}
+
+.trend-indicator.trend-rising {
+  border-color: rgba(255, 126, 103, 0.35);
+}
+
+.trend-indicator.trend-rising .trend-arrow,
+.trend-indicator.trend-rising .trend-label {
+  color: #ff9a7f;
+}
+
+.trend-indicator.trend-falling {
+  border-color: rgba(80, 168, 255, 0.38);
+}
+
+.trend-indicator.trend-falling .trend-arrow,
+.trend-indicator.trend-falling .trend-label {
+  color: #7fc8ff;
+}
+
+.trend-indicator.trend-stable .trend-arrow,
+.trend-indicator.trend-stable .trend-label {
+  color: #c5cce0;
+}
+
+
+/* =========================================================
+   GRAFICO ULTIME 12 ORE - AGGIUNTA
+   ========================================================= */
+
+.history-card {
+  padding: 24px 26px 20px;
+}
+
+.history-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.history-header h2 {
+  margin: 0;
+
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+
+.history-legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 13px;
+  flex-wrap: wrap;
+
+  color: #9ba6c2;
+
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.history-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.history-legend-dot {
+  width: 10px;
+  height: 10px;
+
+  display: inline-block;
+
+  border-radius: 50%;
+}
+
+.history-legend-dot.temperature {
+  background: #ff8c73;
+}
+
+.history-legend-dot.humidity {
+  background: #59adff;
+}
+
+.history-chart-wrap {
+  position: relative;
+
+  width: 100%;
+  height: 245px;
+
+  margin-top: 15px;
+}
+
+#historyChart {
+  width: 100%;
+  height: 100%;
+
+  display: block;
+
+  touch-action: none;
+}
+
+.history-empty {
+  position: absolute;
+  inset: 0;
+
+  margin: 0;
+
+  display: grid;
+  place-items: center;
+
+  color: #77829d;
+
+  font-size: 0.82rem;
+
+  pointer-events: none;
+}
+
+.history-tooltip {
+  position: absolute;
+  z-index: 10;
+
+  min-width: 130px;
+  padding: 9px 11px;
+
+  transform: translate(-50%, calc(-100% - 10px));
+
+  color: #f7f9ff;
+
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 11px;
+
+  background: rgba(7, 12, 27, 0.96);
+
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.38);
+
+  font-size: 0.70rem;
+  line-height: 1.45;
+
+  pointer-events: none;
+}
+
+.history-tooltip strong {
+  display: block;
+
+  margin-bottom: 2px;
+
+  font-size: 0.74rem;
+}
+
+
+@media (max-width: 700px) {
+
+  .cards {
+    gap: 42px;
+  }
+
+  .trend-indicator {
+    width: 34px;
+    height: 134px;
+    padding: 7px 2px;
+  }
+
+  .trend-sun,
+  .trend-snow {
+    font-size: 0.84rem;
+  }
+
+  .trend-arrow {
+    font-size: 1.70rem;
+  }
+
+  .trend-label,
+  .trend-delta {
+    font-size: 0.40rem;
+  }
+
+  .history-card {
+    padding: 17px 13px 14px;
+  }
+
+  .history-header {
+    align-items: center;
+    gap: 10px;
+  }
+
+  .history-header h2 {
+    font-size: 1.05rem;
+  }
+
+  .history-legend {
+    gap: 8px;
+
+    font-size: 0.59rem;
+  }
+
+  .history-legend-dot {
+    width: 8px;
+    height: 8px;
+  }
+
+  .history-chart-wrap {
+    height: 205px;
+
+    margin-top: 11px;
+  }
+}
+
+
+@media (max-width: 370px) {
+
+  .cards {
+    gap: 34px;
+  }
+
+  .trend-indicator {
+    width: 29px;
+    height: 126px;
+  }
+
+  .trend-label {
+    display: none;
+  }
+
+  .trend-delta {
+    font-size: 0.37rem;
+  }
+
+  .history-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .history-legend {
+    justify-content: flex-start;
+  }
+}
