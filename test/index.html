@@ -1,1 +1,457 @@
+<!DOCTYPE html>
+<html lang="it">
 
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <meta name="theme-color" content="#0b1020">
+
+  <title>Camera Ascanio</title>
+
+  <link rel="stylesheet" href="./style.css?v=7">
+</head>
+
+<body>
+
+  <main class="dashboard">
+
+    <header class="page-header">
+
+      <p class="eyebrow">
+        CASA LUCIO ELENA
+      </p>
+
+      <h1>
+        CAMERA ASCANIO
+      </h1>
+
+      <p class="subtitle">
+        Controllo ambientale e climatizzatore
+      </p>
+
+    </header>
+
+
+    <!-- ========================================
+         TEMPERATURA E UMIDITÀ
+         ======================================== -->
+
+    <section
+      class="cards"
+      aria-label="Dati ambientali"
+    >
+
+      <article
+        class="card sensor-card temperature-card"
+      >
+
+        <div
+          class="icon"
+          aria-hidden="true"
+        >
+          🌡️
+        </div>
+
+        <div class="sensor-content">
+
+          <p class="label">
+            Temperatura
+          </p>
+
+          <p class="value">
+
+            <span id="temperatura">
+              --
+            </span>
+
+            <span class="unit">
+              °C
+            </span>
+
+          </p>
+
+          <p class="sensor-note">
+            Temperatura attuale
+          </p>
+
+        </div>
+
+      </article>
+
+
+      <article
+        class="card sensor-card humidity-card"
+      >
+
+        <div
+          class="icon"
+          aria-hidden="true"
+        >
+          💧
+        </div>
+
+        <div class="sensor-content">
+
+          <p class="label">
+            Umidità
+          </p>
+
+          <p class="value">
+
+            <span id="umidita">
+              --
+            </span>
+
+            <span class="unit">
+              %
+            </span>
+
+          </p>
+
+          <p class="sensor-note">
+            Umidità relativa
+          </p>
+
+        </div>
+
+      </article>
+
+    </section>
+
+
+    <!-- ========================================
+         STATO ESP32
+         ======================================== -->
+
+    <section
+      class="status-card connection-card"
+    >
+
+      <div class="status-row">
+
+        <span
+          id="statusDot"
+          class="status-dot"
+          aria-hidden="true"
+        ></span>
+
+        <strong id="stato">
+          Connessione...
+        </strong>
+
+      </div>
+
+
+      <div class="details">
+
+        <p>
+
+          Segnale Wi-Fi:
+
+          <strong>
+
+            <span id="rssi">
+              --
+            </span>
+
+            dBm
+
+          </strong>
+
+        </p>
+
+
+        <p>
+
+          Ultimo dato ricevuto:
+
+          <strong id="ultimoAggiornamento">
+            --
+          </strong>
+
+        </p>
+
+      </div>
+
+    </section>
+
+
+    <!-- ========================================
+         CLIMATIZZATORE
+         ======================================== -->
+
+    <section
+      class="status-card climate-card"
+    >
+
+      <div class="section-heading">
+
+        <div>
+
+          <p class="section-kicker">
+            Controllo
+          </p>
+
+          <h2>
+            ❄️ Climatizzatore
+          </h2>
+
+        </div>
+
+
+        <div class="power-badge">
+
+          <span>
+            Stato
+          </span>
+
+          <strong id="powerState">
+            SPENTO
+          </strong>
+
+        </div>
+
+      </div>
+
+
+      <button
+        id="powerButton"
+        class="primary-button power-button"
+        type="button"
+      >
+        ACCENDI
+      </button>
+
+
+      <div class="divider"></div>
+
+
+      <!-- MODALITÀ AUTOMATICA -->
+
+      <div class="automatic-header">
+
+        <div>
+
+          <p class="section-kicker">
+            Regolazione
+          </p>
+
+          <h3>
+            Modalità automatica
+          </h3>
+
+        </div>
+
+
+        <label class="switch">
+
+          <input
+            type="checkbox"
+            id="autoMode"
+          >
+
+          <span
+            class="switch-slider"
+          ></span>
+
+        </label>
+
+      </div>
+
+
+      <p class="automatic-description">
+
+        Il climatizzatore si accende e si spegne
+        automaticamente in base alle temperature
+        impostate.
+
+      </p>
+
+
+      <div class="threshold-grid">
+
+
+        <!-- SOGLIA ACCENSIONE -->
+
+        <label
+          class="threshold-field"
+          for="tempOn"
+        >
+
+          <span class="threshold-icon">
+            🔥
+          </span>
+
+
+          <span class="threshold-content">
+
+            <span class="threshold-label">
+              Accendi sopra
+            </span>
+
+
+            <span class="input-wrapper">
+
+              <input
+                id="tempOn"
+                type="number"
+                step="0.5"
+                min="15"
+                max="35"
+                value="26"
+                inputmode="decimal"
+              >
+
+              <span class="input-unit">
+                °C
+              </span>
+
+            </span>
+
+          </span>
+
+        </label>
+
+
+        <!-- SOGLIA SPEGNIMENTO -->
+
+        <label
+          class="threshold-field"
+          for="tempOff"
+        >
+
+          <span class="threshold-icon">
+            ❄️
+          </span>
+
+
+          <span class="threshold-content">
+
+            <span class="threshold-label">
+              Spegni sotto
+            </span>
+
+
+            <span class="input-wrapper">
+
+              <input
+                id="tempOff"
+                type="number"
+                step="0.5"
+                min="15"
+                max="35"
+                value="24"
+                inputmode="decimal"
+              >
+
+              <span class="input-unit">
+                °C
+              </span>
+
+            </span>
+
+          </span>
+
+        </label>
+
+      </div>
+
+
+      <button
+        id="saveSettings"
+        class="secondary-button"
+        type="button"
+      >
+        SALVA IMPOSTAZIONI
+      </button>
+
+    </section>
+
+
+    <!-- ========================================
+         PROGRAMMAZIONE ORARIA
+         ======================================== -->
+
+    <section
+      class="status-card schedule-card"
+    >
+
+      <div class="section-heading">
+
+        <div>
+
+          <p class="section-kicker">
+            Automazione
+          </p>
+
+          <h2>
+            🕐 Programmazione
+          </h2>
+
+        </div>
+
+      </div>
+
+
+      <p class="automatic-description">
+
+        Programma gli orari di accensione e
+        spegnimento del climatizzatore.
+
+      </p>
+
+
+      <!--
+        Qui JavaScript inserirà automaticamente
+        le card dei programmi presenti su Firebase.
+      -->
+
+      <div
+        id="programList"
+        class="program-list"
+      >
+
+        <p class="program-empty">
+          Caricamento programmi...
+        </p>
+
+      </div>
+
+
+      <button
+        id="addProgramButton"
+        class="secondary-button"
+        type="button"
+      >
+        + NUOVO PROGRAMMA
+      </button>
+
+    </section>
+
+
+    <!-- ========================================
+         MESSAGGI DI ERRORE
+         ======================================== -->
+
+    <p
+      id="errore"
+      class="error"
+      hidden
+    ></p>
+
+  </main>
+
+
+  <script
+    type="module"
+    src="./script.js?v=7"
+  ></script>
+
+</body>
+
+</html>
