@@ -1,9 +1,7 @@
-```html
 <!DOCTYPE html>
 <html lang="it">
 
 <head>
-
   <meta charset="UTF-8">
 
   <meta
@@ -11,26 +9,16 @@
     content="width=device-width, initial-scale=1.0"
   >
 
-  <title>
-    Camera Ascanio
-  </title>
+  <meta name="theme-color" content="#0b1020">
 
-  <link
-    rel="stylesheet"
-    href="styles.css"
-  >
+  <title>Camera Ascanio</title>
 
+  <link rel="stylesheet" href="./style.css?v=7">
 </head>
-
 
 <body>
 
   <main class="dashboard">
-
-
-    <!-- ========================================
-         INTESTAZIONE
-         ======================================== -->
 
     <header class="page-header">
 
@@ -50,16 +38,13 @@
 
 
     <!-- ========================================
-         TEMPERATURA / TREND / UMIDITÀ
+         TEMPERATURA E UMIDITÀ
          ======================================== -->
 
     <section
-      class="cards environmental-cards"
+      class="cards"
       aria-label="Dati ambientali"
     >
-
-
-      <!-- TEMPERATURA -->
 
       <article
         class="card sensor-card temperature-card"
@@ -72,13 +57,11 @@
           🌡️
         </div>
 
-
         <div class="sensor-content">
 
           <p class="label">
             Temperatura
           </p>
-
 
           <p class="value">
 
@@ -92,7 +75,6 @@
 
           </p>
 
-
           <p class="sensor-note">
             Temperatura attuale
           </p>
@@ -101,56 +83,6 @@
 
       </article>
 
-
-      <!-- ========================================
-           INDICATORE TREND TEMPERATURA
-           ======================================== -->
-
-      <aside
-        class="temperature-trend-card"
-        aria-label="Trend temperatura"
-      >
-
-        <div
-          class="trend-hot-icon"
-          aria-hidden="true"
-        >
-          ☀️
-        </div>
-
-
-        <div class="trend-indicator">
-
-          <span
-            id="trendArrow"
-            class="trend-arrow stable"
-            aria-hidden="true"
-          >
-            ↔
-          </span>
-
-
-          <span
-            id="trendText"
-            class="trend-text"
-          >
-            Stabile
-          </span>
-
-        </div>
-
-
-        <div
-          class="trend-cold-icon"
-          aria-hidden="true"
-        >
-          ❄️
-        </div>
-
-      </aside>
-
-
-      <!-- UMIDITÀ -->
 
       <article
         class="card sensor-card humidity-card"
@@ -163,13 +95,11 @@
           💧
         </div>
 
-
         <div class="sensor-content">
 
           <p class="label">
             Umidità
           </p>
-
 
           <p class="value">
 
@@ -183,7 +113,6 @@
 
           </p>
 
-
           <p class="sensor-note">
             Umidità relativa
           </p>
@@ -193,7 +122,6 @@
       </article>
 
     </section>
-
 
 
     <!-- ========================================
@@ -253,93 +181,6 @@
     </section>
 
 
-
-    <!-- ========================================
-         GRAFICO ULTIME 12 ORE
-         ======================================== -->
-
-    <section
-      class="status-card chart-card"
-      aria-labelledby="chartTitle"
-    >
-
-      <div class="section-heading">
-
-        <div>
-
-          <p class="section-kicker">
-            Storico ambientale
-          </p>
-
-          <h2 id="chartTitle">
-            📈 Ultime 12 ore
-          </h2>
-
-        </div>
-
-      </div>
-
-
-      <p class="automatic-description">
-        Andamento della temperatura e dell'umidità
-        registrate nelle ultime 12 ore.
-      </p>
-
-
-      <div class="chart-legend">
-
-        <div class="chart-legend-item">
-
-          <span
-            class="chart-legend-dot temperature"
-            aria-hidden="true"
-          ></span>
-
-          <span>
-            Temperatura
-          </span>
-
-        </div>
-
-
-        <div class="chart-legend-item">
-
-          <span
-            class="chart-legend-dot humidity"
-            aria-hidden="true"
-          ></span>
-
-          <span>
-            Umidità
-          </span>
-
-        </div>
-
-      </div>
-
-
-      <div class="chart-wrapper">
-
-        <canvas
-          id="environmentChart"
-          aria-label="Grafico temperatura e umidità ultime 12 ore"
-          role="img"
-        ></canvas>
-
-      </div>
-
-
-      <p
-        id="chartEmpty"
-        class="program-empty"
-      >
-        Caricamento storico...
-      </p>
-
-    </section>
-
-
-
     <!-- ========================================
          CLIMATIZZATORE
          ======================================== -->
@@ -390,10 +231,7 @@
       <div class="divider"></div>
 
 
-
-      <!-- ========================================
-           MODALITÀ AUTOMATICA
-           ======================================== -->
+      <!-- MODALITÀ AUTOMATICA -->
 
       <div class="automatic-header">
 
@@ -438,7 +276,6 @@
       <div class="threshold-grid">
 
 
-
         <!-- SOGLIA ACCENSIONE -->
 
         <label
@@ -479,7 +316,6 @@
           </span>
 
         </label>
-
 
 
         <!-- SOGLIA SPEGNIMENTO -->
@@ -537,7 +373,6 @@
     </section>
 
 
-
     <!-- ========================================
          PROGRAMMAZIONE ORARIA
          ======================================== -->
@@ -571,6 +406,11 @@
       </p>
 
 
+      <!--
+        Qui JavaScript inserirà automaticamente
+        le card dei programmi presenti su Firebase.
+      -->
+
       <div
         id="programList"
         class="program-list"
@@ -594,7 +434,6 @@
     </section>
 
 
-
     <!-- ========================================
          MESSAGGI DI ERRORE
          ======================================== -->
@@ -605,30 +444,14 @@
       hidden
     ></p>
 
-
   </main>
 
 
-  <!-- ========================================
-       CHART.JS
-       ======================================== -->
-
-  <script
-    src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"
-  ></script>
-
-
-  <!-- ========================================
-       JAVASCRIPT PRINCIPALE
-       ======================================== -->
-
   <script
     type="module"
-    src="app.js"
+    src="./script.js?v=7"
   ></script>
-
 
 </body>
 
 </html>
-```
