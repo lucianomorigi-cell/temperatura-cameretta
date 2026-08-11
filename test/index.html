@@ -11,9 +11,9 @@
 
   <meta name="theme-color" content="#0b1020">
 
-  <title>test Camera Ascanio</title>
+  <title>Camera Ascanio</title>
 
-  <link rel="stylesheet" href="./style.css?v=7">
+  <link rel="stylesheet" href="./style.css?v=8">
 </head>
 
 <body>
@@ -27,7 +27,7 @@
       </p>
 
       <h1>
-         test CAMERA ASCANIO
+        CAMERA ASCANIO
       </h1>
 
       <p class="subtitle">
@@ -37,9 +37,7 @@
     </header>
 
 
-    <!-- ========================================
-         TEMPERATURA, TREND E UMIDITÀ
-         ======================================== -->
+    <!-- TEMPERATURA, TREND E UMIDITÀ -->
 
     <section
       class="cards"
@@ -83,10 +81,6 @@
 
       </article>
 
-
-      <!-- ========================================
-           TREND TEMPERATURA
-           ======================================== -->
 
       <div
         class="temperature-trend"
@@ -159,9 +153,7 @@
     </section>
 
 
-    <!-- ========================================
-         STATO ESP32
-         ======================================== -->
+    <!-- STATO ESP32 -->
 
     <section
       class="status-card connection-card"
@@ -216,9 +208,65 @@
     </section>
 
 
-    <!-- ========================================
-         CLIMATIZZATORE
-         ======================================== -->
+    <!-- GRAFICO ULTIME 12 ORE -->
+
+    <section
+      class="status-card history-card"
+    >
+
+      <div class="history-header">
+
+        <div>
+
+          <p class="section-kicker">
+            Storico
+          </p>
+
+          <h2>
+            📈 Andamento ambientale
+          </h2>
+
+        </div>
+
+
+        <span
+          id="historyPoints"
+          class="history-meta"
+        >
+          0 campioni
+        </span>
+
+      </div>
+
+
+      <p class="history-description">
+        Temperatura e umidità registrate nelle ultime 12 ore.
+      </p>
+
+
+      <div class="history-chart-wrap">
+
+        <canvas
+          id="historyChart"
+          aria-label="Grafico temperatura e umidità ultime 12 ore"
+          role="img"
+          hidden
+        ></canvas>
+
+
+        <p
+          id="historyEmpty"
+          class="history-empty"
+        >
+          Raccolta dati in corso...
+        </p>
+
+      </div>
+
+    </section>
+
+
+    <!-- CLIMATIZZATORE -->
 
     <section
       class="status-card climate-card"
@@ -266,8 +314,6 @@
       <div class="divider"></div>
 
 
-      <!-- MODALITÀ AUTOMATICA -->
-
       <div class="automatic-header">
 
         <div>
@@ -311,8 +357,6 @@
       <div class="threshold-grid">
 
 
-        <!-- SOGLIA ACCENSIONE -->
-
         <label
           class="threshold-field"
           for="tempOn"
@@ -352,8 +396,6 @@
 
         </label>
 
-
-        <!-- SOGLIA SPEGNIMENTO -->
 
         <label
           class="threshold-field"
@@ -408,9 +450,7 @@
     </section>
 
 
-    <!-- ========================================
-         PROGRAMMAZIONE ORARIA
-         ======================================== -->
+    <!-- PROGRAMMAZIONE -->
 
     <section
       class="status-card schedule-card"
@@ -441,11 +481,6 @@
       </p>
 
 
-      <!--
-        Qui JavaScript inserirà automaticamente
-        le card dei programmi presenti su Firebase.
-      -->
-
       <div
         id="programList"
         class="program-list"
@@ -469,10 +504,6 @@
     </section>
 
 
-    <!-- ========================================
-         MESSAGGI DI ERRORE
-         ======================================== -->
-
     <p
       id="errore"
       class="error"
@@ -483,8 +514,13 @@
 
 
   <script
+    src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"
+  ></script>
+
+
+  <script
     type="module"
-    src="./script.js?v=7"
+    src="./script.js?v=8"
   ></script>
 
 </body>
