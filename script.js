@@ -22,8 +22,10 @@ const firebaseConfig = {
   appId: "1:1031899495611:web:3a57f6e4c6615f15093d9e"
 };
 
+
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
+
 
 const sensoreRef = ref(
   database,
@@ -43,6 +45,8 @@ const programmiRef = ref(
 
 const TEMPO_OFFLINE_MS = 5000;
 
+const SOGLIA_TREND = 0.1;
+
 const NOMI_GIORNI = [
   "Dom",
   "Lun",
@@ -59,6 +63,12 @@ const temperaturaEl =
 
 const umiditaEl =
   document.getElementById("umidita");
+
+const trendArrowEl =
+  document.getElementById("trendArrow");
+
+const temperatureTrendEl =
+  document.getElementById("temperatureTrend");
 
 const rssiEl =
   document.getElementById("rssi");
@@ -102,6 +112,9 @@ const addProgramButtonEl =
 
 let ultimiDati = null;
 
+let temperaturaPrecedente = null;
+let ultimoTimestampTrend = null;
+
 let climatizzatoreAcceso = false;
 let automaticoAttivo = false;
 
@@ -115,6 +128,154 @@ let salvataggioProgrammaInCorso = false;
 
 
 /* =========================================================
+   TREND TEMPERATURA
+   ========================================================= */
+
+function impostaTrendStabile() {
+
+  if (!trendArrowEl) {
+    return;
+  }
+
+  trendArrowEl.textContent = "•";
+
+  trendArrowEl.classList.remove(
+    "rising",
+    "falling"
+  );
+
+  trendArrowEl.classList.add(
+    "stable"
+  );
+
+  if (temperatureTrendEl) {
+    temperatureTrendEl.setAttribute(
+      "aria-label",
+      "Temperatura stabile"
+    );
+  }
+}
+
+
+function aggiornaTrendTemperatura(
+  temperatura,
+  timestamp
+) {
+
+  if (
+    !trendArrowEl ||
+    typeof temperatura !== "number"
+  ) {
+
+    impostaTrendStabile();
+    return;
+  }
+
+
+  /*
+   * Evita di ricalcolare il trend quando
+   * mostraValori viene richiamata più volte
+   * con la stessa lettura.
+   */
+  if (
+    typeof timestamp === "number" &&
+    ultimoTimestampTrend === timestamp
+  ) {
+    return;
+  }
+
+
+  if (
+    temperaturaPrecedente === null
+  ) {
+
+    temperaturaPrecedente =
+      temperatura;
+
+    if (typeof timestamp === "number") {
+      ultimoTimestampTrend = timestamp;
+    }
+
+    impostaTrendStabile();
+
+    return;
+  }
+
+
+  const differenza =
+    temperatura -
+    temperaturaPrecedente;
+
+
+  trendArrowEl.classList.remove(
+    "rising",
+    "falling",
+    "stable"
+  );
+
+
+  if (
+    differenza >= SOGLIA_TREND
+  ) {
+
+    trendArrowEl.textContent = "↑";
+
+    trendArrowEl.classList.add(
+      "rising"
+    );
+
+    if (temperatureTrendEl) {
+      temperatureTrendEl.setAttribute(
+        "aria-label",
+        "Temperatura in aumento"
+      );
+    }
+
+  } else if (
+    differenza <= -SOGLIA_TREND
+  ) {
+
+    trendArrowEl.textContent = "↓";
+
+    trendArrowEl.classList.add(
+      "falling"
+    );
+
+    if (temperatureTrendEl) {
+      temperatureTrendEl.setAttribute(
+        "aria-label",
+        "Temperatura in diminuzione"
+      );
+    }
+
+  } else {
+
+    trendArrowEl.textContent = "•";
+
+    trendArrowEl.classList.add(
+      "stable"
+    );
+
+    if (temperatureTrendEl) {
+      temperatureTrendEl.setAttribute(
+        "aria-label",
+        "Temperatura stabile"
+      );
+    }
+  }
+
+
+  temperaturaPrecedente =
+    temperatura;
+
+
+  if (typeof timestamp === "number") {
+    ultimoTimestampTrend = timestamp;
+  }
+}
+
+
+/* =========================================================
    SENSORI
    ========================================================= */
 
@@ -125,15 +286,23 @@ function mostraValori(dati) {
       ? dati.temperatura.toFixed(1)
       : "--";
 
+
   umiditaEl.textContent =
     typeof dati.umidita === "number"
       ? dati.umidita.toFixed(0)
       : "--";
 
+
   rssiEl.textContent =
     typeof dati.rssi === "number"
       ? dati.rssi
       : "--";
+
+
+  aggiornaTrendTemperatura(
+    dati.temperatura,
+    dati.ultimoAggiornamento
+  );
 }
 
 
@@ -182,14 +351,18 @@ function aggiornaStato() {
     return;
   }
 
+
   const timestamp =
     ultimiDati.ultimoAggiornamento;
+
 
   const tempoTrascorso =
     Date.now() - timestamp;
 
+
   ultimoAggiornamentoEl.textContent =
     new Date(timestamp).toLocaleString("it-IT");
+
 
   if (
     tempoTrascorso <= TEMPO_OFFLINE_MS
@@ -216,13 +389,16 @@ function aggiornaPulsante() {
       ? "ACCESO"
       : "SPENTO";
 
+
   powerButtonEl.textContent =
     climatizzatoreAcceso
       ? "SPEGNI"
       : "ACCENDI";
 
+
   powerButtonEl.disabled =
     comandoPowerInCorso;
+
 
   if (comandoPowerInCorso) {
 
@@ -259,9 +435,11 @@ function normalizzaGiorni(giorni) {
     false
   ];
 
+
   if (!giorni) {
     return risultato;
   }
+
 
   for (let i = 0; i < 7; i++) {
 
@@ -269,6 +447,7 @@ function normalizzaGiorni(giorni) {
       giorni[i] === true ||
       giorni[String(i)] === true;
   }
+
 
   return risultato;
 }
@@ -278,11 +457,13 @@ function creaGiorniFirebase(giorni) {
 
   const risultato = {};
 
+
   for (let i = 0; i < 7; i++) {
 
     risultato[String(i)] =
       giorni[i] === true;
   }
+
 
   return risultato;
 }
@@ -293,6 +474,7 @@ function orarioValido(orario) {
   if (typeof orario !== "string") {
     return false;
   }
+
 
   return /^([01]\d|2[0-3]):[0-5]\d$/.test(orario);
 }
@@ -308,8 +490,10 @@ function renderProgrammi() {
     return;
   }
 
+
   const elementi =
     Object.entries(programmi);
+
 
   if (elementi.length === 0) {
 
@@ -329,6 +513,7 @@ function renderProgrammi() {
 
       const giorni =
         normalizzaGiorni(programma.giorni);
+
 
       const giorniHtml =
         NOMI_GIORNI.map(
@@ -797,6 +982,7 @@ function apriModaleProgramma(id = null) {
       }
     );
 
+
   } else {
 
     titleEl.textContent =
@@ -834,10 +1020,12 @@ function chiudiModaleProgramma() {
       "scheduleModal"
     );
 
+
   if (modalEl) {
 
     modalEl.hidden = true;
   }
+
 
   programmaInModifica = null;
 }
@@ -1005,6 +1193,7 @@ async function salvaProgramma(evento) {
         programmaRef,
         datiProgramma
       );
+
 
     } else {
 
@@ -1578,6 +1767,8 @@ if (programListEl) {
    ========================================================= */
 
 creaModaleProgramma();
+
+impostaTrendStabile();
 
 
 setInterval(
