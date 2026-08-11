@@ -22,8 +22,10 @@ const firebaseConfig = {
   appId: "1:1031899495611:web:3a57f6e4c6615f15093d9e"
 };
 
+
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
+
 
 const sensoreRef = ref(
   database,
@@ -41,7 +43,19 @@ const programmiRef = ref(
 );
 
 
+/* =========================================================
+   CONFIGURAZIONE
+   ========================================================= */
+
 const TEMPO_OFFLINE_MS = 5000;
+
+/*
+ * Dopo 5 minuti senza variazioni reali
+ * la freccia torna sullo stato stabile.
+ */
+const TEMPO_TREND_STABILE_MS =
+  5 * 60 * 1000;
+
 
 const NOMI_GIORNI = [
   "Dom",
@@ -54,11 +68,21 @@ const NOMI_GIORNI = [
 ];
 
 
+/* =========================================================
+   ELEMENTI PAGINA
+   ========================================================= */
+
 const temperaturaEl =
   document.getElementById("temperatura");
 
 const umiditaEl =
   document.getElementById("umidita");
+
+const trendArrowEl =
+  document.getElementById("trendArrow");
+
+const temperatureTrendEl =
+  document.getElementById("temperatureTrend");
 
 const rssiEl =
   document.getElementById("rssi");
@@ -100,7 +124,49 @@ const addProgramButtonEl =
   document.getElementById("addProgramButton");
 
 
+/* =========================================================
+   VARIABILI GLOBALI
+   ========================================================= */
+
 let ultimiDati = null;
+
+
+/* =========================================================
+   VARIABILI TREND TEMPERATURA
+   ========================================================= */
+
+/*
+ * La temperatura precedente viene memorizzata
+ * come numero intero in decimi.
+ *
+ * Esempio:
+ *
+ * 24.3 °C = 243
+ * 24.4 °C = 244
+ */
+
+let temperaturaPrecedenteDecimi = null;
+
+
+/*
+ * Stato attuale:
+ *
+ * stable
+ * rising
+ * falling
+ */
+
+let statoTrend = "stable";
+
+
+/*
+ * Momento dell'ultima variazione reale
+ * della temperatura.
+ */
+
+let ultimoMovimentoTemperatura =
+  null;
+
 
 let climatizzatoreAcceso = false;
 let automaticoAttivo = false;
@@ -115,6 +181,266 @@ let salvataggioProgrammaInCorso = false;
 
 
 /* =========================================================
+   TREND TEMPERATURA
+   ========================================================= */
+
+function mostraTrendStabile() {
+
+  statoTrend = "stable";
+
+
+  if (!trendArrowEl) {
+    return;
+  }
+
+
+  trendArrowEl.textContent = "•";
+
+
+  trendArrowEl.classList.remove(
+    "rising",
+    "falling"
+  );
+
+
+  trendArrowEl.classList.add(
+    "stable"
+  );
+
+
+  if (temperatureTrendEl) {
+
+    temperatureTrendEl.setAttribute(
+      "aria-label",
+      "Temperatura stabile"
+    );
+  }
+}
+
+
+function mostraTrendSalita() {
+
+  statoTrend = "rising";
+
+
+  if (!trendArrowEl) {
+    return;
+  }
+
+
+  trendArrowEl.textContent = "↑";
+
+
+  trendArrowEl.classList.remove(
+    "falling",
+    "stable"
+  );
+
+
+  trendArrowEl.classList.add(
+    "rising"
+  );
+
+
+  if (temperatureTrendEl) {
+
+    temperatureTrendEl.setAttribute(
+      "aria-label",
+      "Temperatura in aumento"
+    );
+  }
+}
+
+
+function mostraTrendDiscesa() {
+
+  statoTrend = "falling";
+
+
+  if (!trendArrowEl) {
+    return;
+  }
+
+
+  trendArrowEl.textContent = "↓";
+
+
+  trendArrowEl.classList.remove(
+    "rising",
+    "stable"
+  );
+
+
+  trendArrowEl.classList.add(
+    "falling"
+  );
+
+
+  if (temperatureTrendEl) {
+
+    temperatureTrendEl.setAttribute(
+      "aria-label",
+      "Temperatura in diminuzione"
+    );
+  }
+}
+
+
+function aggiornaTrendTemperatura(
+  temperatura
+) {
+
+  /*
+   * Controlliamo che il dato ricevuto
+   * sia effettivamente un numero.
+   */
+
+  if (
+    typeof temperatura !== "number" ||
+    !Number.isFinite(temperatura)
+  ) {
+
+    return;
+  }
+
+
+  /*
+   * Convertiamo la temperatura in decimi.
+   *
+   * Questo evita completamente problemi
+   * tipo:
+   *
+   * 24.4 - 24.3 =
+   * 0.099999999999
+   */
+
+  const temperaturaAttualeDecimi =
+    Math.round(
+      temperatura * 10
+    );
+
+
+  /*
+   * PRIMA LETTURA
+   *
+   * Non esiste ancora una temperatura
+   * precedente da confrontare.
+   */
+
+  if (
+    temperaturaPrecedenteDecimi === null
+  ) {
+
+    temperaturaPrecedenteDecimi =
+      temperaturaAttualeDecimi;
+
+
+    ultimoMovimentoTemperatura =
+      Date.now();
+
+
+    mostraTrendStabile();
+
+
+    return;
+  }
+
+
+  const differenza =
+    temperaturaAttualeDecimi -
+    temperaturaPrecedenteDecimi;
+
+
+  /*
+   * TEMPERATURA AUMENTATA
+   *
+   * Basta una variazione visualizzata
+   * di almeno +0.1 °C.
+   */
+
+  if (
+    differenza > 0
+  ) {
+
+    mostraTrendSalita();
+
+
+    ultimoMovimentoTemperatura =
+      Date.now();
+
+
+    temperaturaPrecedenteDecimi =
+      temperaturaAttualeDecimi;
+
+
+    return;
+  }
+
+
+  /*
+   * TEMPERATURA DIMINUITA
+   *
+   * Basta una variazione visualizzata
+   * di almeno -0.1 °C.
+   */
+
+  if (
+    differenza < 0
+  ) {
+
+    mostraTrendDiscesa();
+
+
+    ultimoMovimentoTemperatura =
+      Date.now();
+
+
+    temperaturaPrecedenteDecimi =
+      temperaturaAttualeDecimi;
+
+
+    return;
+  }
+
+
+  /*
+   * TEMPERATURA IDENTICA
+   *
+   * Non cambiamo immediatamente
+   * la freccia.
+   *
+   * Se era ↑ rimane ↑.
+   * Se era ↓ rimane ↓.
+   *
+   * Soltanto dopo 5 minuti senza
+   * nessuna variazione torniamo •.
+   */
+
+  if (
+    ultimoMovimentoTemperatura !== null
+  ) {
+
+    const tempoSenzaMovimento =
+      Date.now() -
+      ultimoMovimentoTemperatura;
+
+
+    if (
+      tempoSenzaMovimento >=
+      TEMPO_TREND_STABILE_MS
+    ) {
+
+      mostraTrendStabile();
+    }
+  }
+
+
+  temperaturaPrecedenteDecimi =
+    temperaturaAttualeDecimi;
+}
+
+
+/* =========================================================
    SENSORI
    ========================================================= */
 
@@ -125,15 +451,22 @@ function mostraValori(dati) {
       ? dati.temperatura.toFixed(1)
       : "--";
 
+
   umiditaEl.textContent =
     typeof dati.umidita === "number"
       ? dati.umidita.toFixed(0)
       : "--";
 
+
   rssiEl.textContent =
     typeof dati.rssi === "number"
       ? dati.rssi
       : "--";
+
+
+  aggiornaTrendTemperatura(
+    dati.temperatura
+  );
 }
 
 
@@ -150,8 +483,15 @@ function mostraOnline() {
   statoEl.textContent =
     "ESP32 online";
 
-  statusDotEl.classList.add("online");
-  statusDotEl.classList.remove("offline");
+
+  statusDotEl.classList.add(
+    "online"
+  );
+
+
+  statusDotEl.classList.remove(
+    "offline"
+  );
 }
 
 
@@ -160,12 +500,24 @@ function mostraOffline() {
   statoEl.textContent =
     "ESP32 offline";
 
-  statusDotEl.classList.remove("online");
-  statusDotEl.classList.add("offline");
+
+  statusDotEl.classList.remove(
+    "online"
+  );
+
+
+  statusDotEl.classList.add(
+    "offline"
+  );
+
 
   nascondiValori();
 }
 
+
+/* =========================================================
+   STATO ESP32
+   ========================================================= */
 
 function aggiornaStato() {
 
@@ -177,25 +529,38 @@ function aggiornaStato() {
     ultimoAggiornamentoEl.textContent =
       "--";
 
+
     mostraOffline();
+
 
     return;
   }
 
+
   const timestamp =
     ultimiDati.ultimoAggiornamento;
+
 
   const tempoTrascorso =
     Date.now() - timestamp;
 
+
   ultimoAggiornamentoEl.textContent =
-    new Date(timestamp).toLocaleString("it-IT");
+    new Date(timestamp).toLocaleString(
+      "it-IT"
+    );
+
 
   if (
-    tempoTrascorso <= TEMPO_OFFLINE_MS
+    tempoTrascorso <=
+    TEMPO_OFFLINE_MS
   ) {
 
-    mostraValori(ultimiDati);
+    mostraValori(
+      ultimiDati
+    );
+
+
     mostraOnline();
 
   } else {
@@ -216,15 +581,20 @@ function aggiornaPulsante() {
       ? "ACCESO"
       : "SPENTO";
 
+
   powerButtonEl.textContent =
     climatizzatoreAcceso
       ? "SPEGNI"
       : "ACCENDI";
 
+
   powerButtonEl.disabled =
     comandoPowerInCorso;
 
-  if (comandoPowerInCorso) {
+
+  if (
+    comandoPowerInCorso
+  ) {
 
     powerButtonEl.textContent =
       "ATTENDERE...";
@@ -238,7 +608,9 @@ function aggiornaPulsante() {
 
 function escapeHtml(testo) {
 
-  return String(testo ?? "")
+  return String(
+    testo ?? ""
+  )
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
@@ -247,7 +619,9 @@ function escapeHtml(testo) {
 }
 
 
-function normalizzaGiorni(giorni) {
+function normalizzaGiorni(
+  giorni
+) {
 
   const risultato = [
     false,
@@ -259,42 +633,66 @@ function normalizzaGiorni(giorni) {
     false
   ];
 
+
   if (!giorni) {
+
     return risultato;
   }
 
-  for (let i = 0; i < 7; i++) {
+
+  for (
+    let i = 0;
+    i < 7;
+    i++
+  ) {
 
     risultato[i] =
       giorni[i] === true ||
       giorni[String(i)] === true;
   }
 
+
   return risultato;
 }
 
 
-function creaGiorniFirebase(giorni) {
+function creaGiorniFirebase(
+  giorni
+) {
 
   const risultato = {};
 
-  for (let i = 0; i < 7; i++) {
+
+  for (
+    let i = 0;
+    i < 7;
+    i++
+  ) {
 
     risultato[String(i)] =
       giorni[i] === true;
   }
 
+
   return risultato;
 }
 
 
-function orarioValido(orario) {
+function orarioValido(
+  orario
+) {
 
-  if (typeof orario !== "string") {
+  if (
+    typeof orario !== "string"
+  ) {
+
     return false;
   }
 
-  return /^([01]\d|2[0-3]):[0-5]\d$/.test(orario);
+
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(
+    orario
+  );
 }
 
 
@@ -304,14 +702,23 @@ function orarioValido(orario) {
 
 function renderProgrammi() {
 
-  if (!programListEl) {
+  if (
+    !programListEl
+  ) {
+
     return;
   }
 
-  const elementi =
-    Object.entries(programmi);
 
-  if (elementi.length === 0) {
+  const elementi =
+    Object.entries(
+      programmi
+    );
+
+
+  if (
+    elementi.length === 0
+  ) {
 
     programListEl.innerHTML = `
       <p class="program-empty">
@@ -320,136 +727,166 @@ function renderProgrammi() {
       </p>
     `;
 
+
     return;
   }
 
 
   programListEl.innerHTML =
-    elementi.map(([id, programma]) => {
+    elementi.map(
+      ([id, programma]) => {
 
-      const giorni =
-        normalizzaGiorni(programma.giorni);
-
-      const giorniHtml =
-        NOMI_GIORNI.map(
-          (nome, indice) => `
-            <span class="program-day ${
-              giorni[indice]
-                ? "active"
-                : ""
-            }">
-              ${nome}
-            </span>
-          `
-        ).join("");
+        const giorni =
+          normalizzaGiorni(
+            programma.giorni
+          );
 
 
-      const attivo =
-        programma.attivo === true;
+        const giorniHtml =
+          NOMI_GIORNI.map(
+            (nome, indice) => `
 
-
-      const nome =
-        escapeHtml(
-          programma.nome || "Programma"
-        );
-
-
-      const oraAccensione =
-        orarioValido(programma.oraAccensione)
-          ? programma.oraAccensione
-          : "--:--";
-
-
-      const oraSpegnimento =
-        orarioValido(programma.oraSpegnimento)
-          ? programma.oraSpegnimento
-          : "--:--";
-
-
-      return `
-        <article
-          class="program-card ${
-            attivo
-              ? ""
-              : "is-disabled"
-          }"
-        >
-
-          <div class="program-header">
-
-            <h3 class="program-name">
-              ${nome}
-            </h3>
-
-            <span class="program-status">
-              ${attivo ? "Attivo" : "Disattivo"}
-            </span>
-
-          </div>
-
-
-          <div class="program-days">
-            ${giorniHtml}
-          </div>
-
-
-          <div class="program-times">
-
-            <div class="program-time on">
-
-              <span class="program-time-label">
-                Accensione
+              <span
+                class="program-day ${
+                  giorni[indice]
+                    ? "active"
+                    : ""
+                }"
+              >
+                ${nome}
               </span>
 
-              <strong class="program-time-value">
-                ${oraAccensione}
-              </strong>
+            `
+          ).join("");
+
+
+        const attivo =
+          programma.attivo === true;
+
+
+        const nome =
+          escapeHtml(
+            programma.nome ||
+            "Programma"
+          );
+
+
+        const oraAccensione =
+          orarioValido(
+            programma.oraAccensione
+          )
+            ? programma.oraAccensione
+            : "--:--";
+
+
+        const oraSpegnimento =
+          orarioValido(
+            programma.oraSpegnimento
+          )
+            ? programma.oraSpegnimento
+            : "--:--";
+
+
+        return `
+
+          <article
+            class="program-card ${
+              attivo
+                ? ""
+                : "is-disabled"
+            }"
+          >
+
+            <div class="program-header">
+
+              <h3 class="program-name">
+                ${nome}
+              </h3>
+
+
+              <span class="program-status">
+
+                ${
+                  attivo
+                    ? "Attivo"
+                    : "Disattivo"
+                }
+
+              </span>
 
             </div>
 
 
-            <div class="program-time off">
+            <div class="program-days">
 
-              <span class="program-time-label">
-                Spegnimento
-              </span>
-
-              <strong class="program-time-value">
-                ${oraSpegnimento}
-              </strong>
+              ${giorniHtml}
 
             </div>
 
-          </div>
+
+            <div class="program-times">
 
 
-          <div class="program-actions">
+              <div class="program-time on">
 
-            <button
-              class="program-action-button edit"
-              type="button"
-              data-action="edit"
-              data-program-id="${escapeHtml(id)}"
-            >
-              MODIFICA
-            </button>
+                <span class="program-time-label">
+                  Accensione
+                </span>
+
+                <strong class="program-time-value">
+                  ${oraAccensione}
+                </strong>
+
+              </div>
 
 
-            <button
-              class="program-action-button delete"
-              type="button"
-              data-action="delete"
-              data-program-id="${escapeHtml(id)}"
-            >
-              ELIMINA
-            </button>
+              <div class="program-time off">
 
-          </div>
+                <span class="program-time-label">
+                  Spegnimento
+                </span>
 
-        </article>
-      `;
+                <strong class="program-time-value">
+                  ${oraSpegnimento}
+                </strong>
 
-    }).join("");
+              </div>
+
+
+            </div>
+
+
+            <div class="program-actions">
+
+
+              <button
+                class="program-action-button edit"
+                type="button"
+                data-action="edit"
+                data-program-id="${escapeHtml(id)}"
+              >
+                MODIFICA
+              </button>
+
+
+              <button
+                class="program-action-button delete"
+                type="button"
+                data-action="delete"
+                data-program-id="${escapeHtml(id)}"
+              >
+                ELIMINA
+              </button>
+
+
+            </div>
+
+
+          </article>
+        `;
+      }
+
+    ).join("");
 }
 
 
@@ -460,23 +897,31 @@ function renderProgrammi() {
 function creaModaleProgramma() {
 
   if (
-    document.getElementById("scheduleModal")
+    document.getElementById(
+      "scheduleModal"
+    )
   ) {
+
     return;
   }
 
 
   const contenitore =
-    document.createElement("div");
+    document.createElement(
+      "div"
+    );
 
 
   contenitore.id =
     "scheduleModal";
 
+
   contenitore.className =
     "schedule-modal";
 
-  contenitore.hidden = true;
+
+  contenitore.hidden =
+    true;
 
 
   contenitore.innerHTML = `
@@ -574,6 +1019,7 @@ function creaModaleProgramma() {
 
           </label>
 
+
         </div>
 
 
@@ -583,26 +1029,29 @@ function creaModaleProgramma() {
             Giorni
           </span>
 
+
           <div class="schedule-day-grid">
 
-            ${NOMI_GIORNI.map(
-              (nome, indice) => `
+            ${
+              NOMI_GIORNI.map(
+                (nome, indice) => `
 
-                <label class="schedule-day-option">
+                  <label class="schedule-day-option">
 
-                  <input
-                    type="checkbox"
-                    data-day="${indice}"
-                  >
+                    <input
+                      type="checkbox"
+                      data-day="${indice}"
+                    >
 
-                  <span>
-                    ${nome}
-                  </span>
+                    <span>
+                      ${nome}
+                    </span>
 
-                </label>
+                  </label>
 
-              `
-            ).join("")}
+                `
+              ).join("")
+            }
 
           </div>
 
@@ -660,7 +1109,9 @@ function creaModaleProgramma() {
 
         </div>
 
+
       </form>
+
 
     </div>
   `;
@@ -672,7 +1123,9 @@ function creaModaleProgramma() {
 
 
   document
-    .getElementById("scheduleCloseButton")
+    .getElementById(
+      "scheduleCloseButton"
+    )
     .addEventListener(
       "click",
       chiudiModaleProgramma
@@ -680,7 +1133,9 @@ function creaModaleProgramma() {
 
 
   document
-    .getElementById("scheduleCancelButton")
+    .getElementById(
+      "scheduleCancelButton"
+    )
     .addEventListener(
       "click",
       chiudiModaleProgramma
@@ -688,7 +1143,9 @@ function creaModaleProgramma() {
 
 
   document
-    .getElementById("scheduleForm")
+    .getElementById(
+      "scheduleForm"
+    )
     .addEventListener(
       "submit",
       salvaProgramma
@@ -697,10 +1154,12 @@ function creaModaleProgramma() {
 
   contenitore.addEventListener(
     "click",
+
     (evento) => {
 
       if (
-        evento.target === contenitore
+        evento.target ===
+        contenitore
       ) {
 
         chiudiModaleProgramma();
@@ -714,30 +1173,52 @@ function creaModaleProgramma() {
    APERTURA PROGRAMMA
    ========================================================= */
 
-function apriModaleProgramma(id = null) {
+function apriModaleProgramma(
+  id = null
+) {
 
   creaModaleProgramma();
 
-  programmaInModifica = id;
+
+  programmaInModifica =
+    id;
 
 
   const modalEl =
-    document.getElementById("scheduleModal");
+    document.getElementById(
+      "scheduleModal"
+    );
+
 
   const titleEl =
-    document.getElementById("scheduleDialogTitle");
+    document.getElementById(
+      "scheduleDialogTitle"
+    );
+
 
   const nameEl =
-    document.getElementById("scheduleName");
+    document.getElementById(
+      "scheduleName"
+    );
+
 
   const timeOnEl =
-    document.getElementById("scheduleTimeOn");
+    document.getElementById(
+      "scheduleTimeOn"
+    );
+
 
   const timeOffEl =
-    document.getElementById("scheduleTimeOff");
+    document.getElementById(
+      "scheduleTimeOff"
+    );
+
 
   const enabledEl =
-    document.getElementById("scheduleEnabled");
+    document.getElementById(
+      "scheduleEnabled"
+    );
+
 
   const checkboxes =
     modalEl.querySelectorAll(
@@ -763,13 +1244,17 @@ function apriModaleProgramma(id = null) {
 
 
     timeOnEl.value =
-      orarioValido(programma.oraAccensione)
+      orarioValido(
+        programma.oraAccensione
+      )
         ? programma.oraAccensione
         : "";
 
 
     timeOffEl.value =
-      orarioValido(programma.oraSpegnimento)
+      orarioValido(
+        programma.oraSpegnimento
+      )
         ? programma.oraSpegnimento
         : "";
 
@@ -792,21 +1277,26 @@ function apriModaleProgramma(id = null) {
             checkbox.dataset.day
           );
 
+
         checkbox.checked =
           giorni[indice];
       }
     );
+
 
   } else {
 
     titleEl.textContent =
       "Nuovo programma";
 
+
     nameEl.value = "";
     timeOnEl.value = "";
     timeOffEl.value = "";
 
-    enabledEl.checked = true;
+
+    enabledEl.checked =
+      true;
 
 
     checkboxes.forEach(
@@ -819,7 +1309,8 @@ function apriModaleProgramma(id = null) {
   }
 
 
-  modalEl.hidden = false;
+  modalEl.hidden =
+    false;
 }
 
 
@@ -834,12 +1325,18 @@ function chiudiModaleProgramma() {
       "scheduleModal"
     );
 
-  if (modalEl) {
 
-    modalEl.hidden = true;
+  if (
+    modalEl
+  ) {
+
+    modalEl.hidden =
+      true;
   }
 
-  programmaInModifica = null;
+
+  programmaInModifica =
+    null;
 }
 
 
@@ -847,7 +1344,9 @@ function chiudiModaleProgramma() {
    SALVATAGGIO PROGRAMMA
    ========================================================= */
 
-async function salvaProgramma(evento) {
+async function salvaProgramma(
+  evento
+) {
 
   evento.preventDefault();
 
@@ -855,6 +1354,7 @@ async function salvaProgramma(evento) {
   if (
     salvataggioProgrammaInCorso
   ) {
+
     return;
   }
 
@@ -864,20 +1364,24 @@ async function salvaProgramma(evento) {
       "scheduleName"
     );
 
+
   const timeOnEl =
     document.getElementById(
       "scheduleTimeOn"
     );
+
 
   const timeOffEl =
     document.getElementById(
       "scheduleTimeOff"
     );
 
+
   const enabledEl =
     document.getElementById(
       "scheduleEnabled"
     );
+
 
   const saveButtonEl =
     document.getElementById(
@@ -888,8 +1392,10 @@ async function salvaProgramma(evento) {
   const nome =
     nameEl.value.trim();
 
+
   const oraAccensione =
     timeOnEl.value;
+
 
   const oraSpegnimento =
     timeOffEl.value;
@@ -901,18 +1407,24 @@ async function salvaProgramma(evento) {
       "Inserisci un nome per il programma."
     );
 
+
     return;
   }
 
 
   if (
-    !orarioValido(oraAccensione) ||
-    !orarioValido(oraSpegnimento)
+    !orarioValido(
+      oraAccensione
+    ) ||
+    !orarioValido(
+      oraSpegnimento
+    )
   ) {
 
     alert(
       "Inserisci gli orari di accensione e spegnimento."
     );
+
 
     return;
   }
@@ -943,6 +1455,7 @@ async function salvaProgramma(evento) {
           checkbox.dataset.day
         );
 
+
       giorni[indice] =
         checkbox.checked;
     }
@@ -959,6 +1472,7 @@ async function salvaProgramma(evento) {
       "Seleziona almeno un giorno."
     );
 
+
     return;
   }
 
@@ -971,7 +1485,9 @@ async function salvaProgramma(evento) {
       enabledEl.checked,
 
     giorni:
-      creaGiorniFirebase(giorni),
+      creaGiorniFirebase(
+        giorni
+      ),
 
     oraAccensione,
 
@@ -979,9 +1495,13 @@ async function salvaProgramma(evento) {
   };
 
 
-  salvataggioProgrammaInCorso = true;
+  salvataggioProgrammaInCorso =
+    true;
 
-  saveButtonEl.disabled = true;
+
+  saveButtonEl.disabled =
+    true;
+
 
   saveButtonEl.textContent =
     "SALVATAGGIO...";
@@ -991,7 +1511,9 @@ async function salvaProgramma(evento) {
 
     if (
       programmaInModifica &&
-      programmi[programmaInModifica]
+      programmi[
+        programmaInModifica
+      ]
     ) {
 
       const programmaRef =
@@ -1006,10 +1528,13 @@ async function salvaProgramma(evento) {
         datiProgramma
       );
 
+
     } else {
 
       const nuovoProgrammaRef =
-        push(programmiRef);
+        push(
+          programmiRef
+        );
 
 
       await set(
@@ -1022,7 +1547,9 @@ async function salvaProgramma(evento) {
     chiudiModaleProgramma();
 
 
-  } catch (errore) {
+  } catch (
+    errore
+  ) {
 
     console.error(
       "Errore salvataggio programma:",
@@ -1037,9 +1564,13 @@ async function salvaProgramma(evento) {
 
   } finally {
 
-    salvataggioProgrammaInCorso = false;
+    salvataggioProgrammaInCorso =
+      false;
 
-    saveButtonEl.disabled = false;
+
+    saveButtonEl.disabled =
+      false;
+
 
     saveButtonEl.textContent =
       "SALVA PROGRAMMA";
@@ -1051,13 +1582,18 @@ async function salvaProgramma(evento) {
    ELIMINA PROGRAMMA
    ========================================================= */
 
-async function eliminaProgramma(id) {
+async function eliminaProgramma(
+  id
+) {
 
   const programma =
     programmi[id];
 
 
-  if (!programma) {
+  if (
+    !programma
+  ) {
+
     return;
   }
 
@@ -1068,7 +1604,10 @@ async function eliminaProgramma(id) {
     );
 
 
-  if (!conferma) {
+  if (
+    !conferma
+  ) {
+
     return;
   }
 
@@ -1087,7 +1626,9 @@ async function eliminaProgramma(id) {
     );
 
 
-  } catch (errore) {
+  } catch (
+    errore
+  ) {
 
     console.error(
       "Errore eliminazione programma:",
@@ -1115,20 +1656,28 @@ onValue(
       snapshot.val();
 
 
-    if (!ultimiDati) {
+    if (
+      !ultimiDati
+    ) {
 
-      erroreEl.hidden = false;
+      erroreEl.hidden =
+        false;
+
 
       erroreEl.textContent =
         "Nessun dato disponibile nel database.";
 
+
       aggiornaStato();
+
 
       return;
     }
 
 
-    erroreEl.hidden = true;
+    erroreEl.hidden =
+      true;
+
 
     aggiornaStato();
   },
@@ -1142,13 +1691,17 @@ onValue(
     );
 
 
-    erroreEl.hidden = false;
+    erroreEl.hidden =
+      false;
+
 
     erroreEl.textContent =
       "Impossibile leggere i dati da Firebase.";
 
 
-    ultimiDati = null;
+    ultimiDati =
+      null;
+
 
     aggiornaStato();
   }
@@ -1168,10 +1721,13 @@ onValue(
       snapshot.val();
 
 
-    if (!dati) {
+    if (
+      !dati
+    ) {
 
       climatizzatoreAcceso =
         false;
+
 
       automaticoAttivo =
         false;
@@ -1180,14 +1736,17 @@ onValue(
       autoModeEl.checked =
         false;
 
+
       tempOnEl.value =
         26;
+
 
       tempOffEl.value =
         24;
 
 
       aggiornaPulsante();
+
 
       return;
     }
@@ -1206,13 +1765,15 @@ onValue(
 
 
     tempOnEl.value =
-      typeof dati.sogliaAccensione === "number"
+      typeof dati.sogliaAccensione ===
+      "number"
         ? dati.sogliaAccensione
         : 26;
 
 
     tempOffEl.value =
-      typeof dati.sogliaSpegnimento === "number"
+      typeof dati.sogliaSpegnimento ===
+      "number"
         ? dati.sogliaSpegnimento
         : 24;
 
@@ -1247,7 +1808,9 @@ onValue(
     );
 
 
-    if (programListEl) {
+    if (
+      programListEl
+    ) {
 
       programListEl.innerHTML = `
         <p class="program-empty">
@@ -1268,7 +1831,10 @@ powerButtonEl.addEventListener(
 
   async () => {
 
-    if (comandoPowerInCorso) {
+    if (
+      comandoPowerInCorso
+    ) {
+
       return;
     }
 
@@ -1289,13 +1855,19 @@ powerButtonEl.addEventListener(
       await update(
         climaRef,
         {
-          power: nuovoStato,
-          automatico: false
+
+          power:
+            nuovoStato,
+
+          automatico:
+            false
         }
       );
 
 
-    } catch (errore) {
+    } catch (
+      errore
+    ) {
 
       console.error(
         "Errore comando manuale:",
@@ -1332,6 +1904,7 @@ autoModeEl.addEventListener(
     if (
       comandoAutomaticoInCorso
     ) {
+
       return;
     }
 
@@ -1357,13 +1930,16 @@ autoModeEl.addEventListener(
       await update(
         climaRef,
         {
+
           automatico:
             nuovoStato
         }
       );
 
 
-    } catch (errore) {
+    } catch (
+      errore
+    ) {
 
       console.error(
         "Errore modalità automatica:",
@@ -1405,6 +1981,7 @@ saveSettingsEl.addEventListener(
     if (
       salvataggioInCorso
     ) {
+
       return;
     }
 
@@ -1422,13 +1999,18 @@ saveSettingsEl.addEventListener(
 
 
     if (
-      Number.isNaN(sogliaAccensione) ||
-      Number.isNaN(sogliaSpegnimento)
+      Number.isNaN(
+        sogliaAccensione
+      ) ||
+      Number.isNaN(
+        sogliaSpegnimento
+      )
     ) {
 
       alert(
         "Inserisci due temperature valide."
       );
+
 
       return;
     }
@@ -1442,6 +2024,7 @@ saveSettingsEl.addEventListener(
       alert(
         "La temperatura di spegnimento non può essere superiore a quella di accensione."
       );
+
 
       return;
     }
@@ -1464,7 +2047,9 @@ saveSettingsEl.addEventListener(
       await update(
         climaRef,
         {
+
           sogliaAccensione,
+
           sogliaSpegnimento
         }
       );
@@ -1475,7 +2060,9 @@ saveSettingsEl.addEventListener(
       );
 
 
-    } catch (errore) {
+    } catch (
+      errore
+    ) {
 
       console.error(
         "Errore salvataggio impostazioni:",
@@ -1509,7 +2096,9 @@ saveSettingsEl.addEventListener(
    PULSANTE NUOVO PROGRAMMA
    ========================================================= */
 
-if (addProgramButtonEl) {
+if (
+  addProgramButtonEl
+) {
 
   addProgramButtonEl.addEventListener(
     "click",
@@ -1526,7 +2115,9 @@ if (addProgramButtonEl) {
    MODIFICA / ELIMINA PROGRAMMA
    ========================================================= */
 
-if (programListEl) {
+if (
+  programListEl
+) {
 
   programListEl.addEventListener(
     "click",
@@ -1539,7 +2130,10 @@ if (programListEl) {
         );
 
 
-      if (!bottone) {
+      if (
+        !bottone
+      ) {
+
         return;
       }
 
@@ -1556,7 +2150,10 @@ if (programListEl) {
         azione === "edit"
       ) {
 
-        apriModaleProgramma(id);
+        apriModaleProgramma(
+          id
+        );
+
 
         return;
       }
@@ -1566,7 +2163,9 @@ if (programListEl) {
         azione === "delete"
       ) {
 
-        eliminaProgramma(id);
+        eliminaProgramma(
+          id
+        );
       }
     }
   );
@@ -1580,8 +2179,10 @@ if (programListEl) {
 creaModaleProgramma();
 
 
+mostraTrendStabile();
+
+
 setInterval(
   aggiornaStato,
   1000
 );
-
