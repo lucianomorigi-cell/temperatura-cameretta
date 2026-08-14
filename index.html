@@ -37,7 +37,9 @@
     </header>
 
 
-    <!-- TEMPERATURA, TREND E UMIDITÀ -->
+    <!-- ========================================
+         TEMPERATURA, TREND E UMIDITÀ
+         ======================================== -->
 
     <section
       class="cards"
@@ -153,7 +155,9 @@
     </section>
 
 
-    <!-- STATO ESP32 -->
+    <!-- ========================================
+         STATO ESP32
+         ======================================== -->
 
     <section
       class="status-card connection-card"
@@ -208,13 +212,16 @@
     </section>
 
 
-    <!-- GRAFICO ULTIME 12 ORE -->
+    <!-- ========================================
+         STORICO
+         ======================================== -->
 
     <section
       class="status-card history-card"
+      aria-labelledby="historyTitle"
     >
 
-      <div class="history-header">
+      <div class="history-heading">
 
         <div>
 
@@ -222,16 +229,20 @@
             Storico
           </p>
 
-          <h2>
+          <h2 id="historyTitle">
             📈 Andamento ambientale
           </h2>
+
+          <p class="history-description">
+            Temperatura e umidità registrate nelle ultime 12 ore.
+          </p>
 
         </div>
 
 
         <span
-          id="historyPoints"
-          class="history-meta"
+          id="historySampleCount"
+          class="history-count"
         >
           0 campioni
         </span>
@@ -239,34 +250,31 @@
       </div>
 
 
-      <p class="history-description">
-        Temperatura e umidità registrate nelle ultime 12 ore.
-      </p>
-
-
       <div class="history-chart-wrap">
 
         <canvas
           id="historyChart"
-          aria-label="Grafico temperatura e umidità ultime 12 ore"
+          aria-label="Grafico temperatura e umidità delle ultime 12 ore"
           role="img"
-          hidden
         ></canvas>
 
-
-        <p
-          id="historyEmpty"
-          class="history-empty"
-        >
-          Raccolta dati in corso...
-        </p>
-
       </div>
+
+
+      <p
+        id="historyEmpty"
+        class="history-empty"
+        hidden
+      >
+        Nessun dato storico disponibile.
+      </p>
 
     </section>
 
 
-    <!-- CLIMATIZZATORE -->
+    <!-- ========================================
+         CLIMATIZZATORE
+         ======================================== -->
 
     <section
       class="status-card climate-card"
@@ -314,6 +322,8 @@
       <div class="divider"></div>
 
 
+      <!-- MODALITÀ AUTOMATICA -->
+
       <div class="automatic-header">
 
         <div>
@@ -357,6 +367,8 @@
       <div class="threshold-grid">
 
 
+        <!-- SOGLIA ACCENSIONE -->
+
         <label
           class="threshold-field"
           for="tempOn"
@@ -396,6 +408,8 @@
 
         </label>
 
+
+        <!-- SOGLIA SPEGNIMENTO -->
 
         <label
           class="threshold-field"
@@ -450,7 +464,9 @@
     </section>
 
 
-    <!-- PROGRAMMAZIONE -->
+    <!-- ========================================
+         PROGRAMMAZIONE ORARIA
+         ======================================== -->
 
     <section
       class="status-card schedule-card"
@@ -504,6 +520,10 @@
     </section>
 
 
+    <!-- ========================================
+         MESSAGGI DI ERRORE
+         ======================================== -->
+
     <p
       id="errore"
       class="error"
@@ -511,11 +531,6 @@
     ></p>
 
   </main>
-
-
-  <script
-    src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"
-  ></script>
 
 
   <script
