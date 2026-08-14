@@ -7,8 +7,17 @@ import {
   update,
   push,
   set,
-  remove
+  remove,
+  query,
+  limitToLast
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-database.js";
+
+import {
+  Chart,
+  registerables
+} from "https://cdn.jsdelivr.net/npm/chart.js@4.4.7/+esm";
+
+Chart.register(...registerables);
 
 
 const firebaseConfig = {
@@ -48,18 +57,27 @@ const storicoRef = ref(
 );
 
 
+/* =========================================================
+   CONFIGURAZIONE
+   ========================================================= */
+
 const TEMPO_OFFLINE_MS = 5000;
 
+/*
+ * Dopo 5 minuti senza variazioni reali
+ * la freccia torna sullo stato stabile.
+ */
 const TEMPO_TREND_STABILE_MS =
   5 * 60 * 1000;
 
-const ORE_STORICO_GRAFICO = 12;
-
-const TEMPO_STORICO_GRAFICO_MS =
-  ORE_STORICO_GRAFICO *
-  60 *
-  60 *
-  1000;
+/*
+ * Grafico storico:
+ * l'ESP32 salva circa un campione al minuto.
+ * Limitiamo la lettura agli ultimi 720 record e poi
+ * mostriamo solo quelli realmente compresi nelle ultime 12 ore.
+ */
+const ORE_STORICO = 12;
+const MAX_CAMPIONI_STORICO = 720;
 
 
 const NOMI_GIORNI = [
@@ -72,6 +90,10 @@ const NOMI_GIORNI = [
   "Sab"
 ];
 
+
+/* =========================================================
+   ELEMENTI PAGINA
+   ========================================================= */
 
 const temperaturaEl =
   document.getElementById("temperatura");
@@ -124,23 +146,59 @@ const programListEl =
 const addProgramButtonEl =
   document.getElementById("addProgramButton");
 
-const historyChartCanvasEl =
+const historyChartEl =
   document.getElementById("historyChart");
+
+const historySampleCountEl =
+  document.getElementById("historySampleCount");
 
 const historyEmptyEl =
   document.getElementById("historyEmpty");
 
-const historyPointsEl =
-  document.getElementById("historyPoints");
 
+/* =========================================================
+   VARIABILI GLOBALI
+   ========================================================= */
 
 let ultimiDati = null;
 
+
+/* =========================================================
+   VARIABILI TREND TEMPERATURA
+   ========================================================= */
+
+/*
+ * La temperatura precedente viene memorizzata
+ * come numero intero in decimi.
+ *
+ * Esempio:
+ *
+ * 24.3 °C = 243
+ * 24.4 °C = 244
+ */
+
 let temperaturaPrecedenteDecimi = null;
+
+
+/*
+ * Stato attuale:
+ *
+ * stable
+ * rising
+ * falling
+ */
 
 let statoTrend = "stable";
 
-let ultimoMovimentoTemperatura = null;
+
+/*
+ * Momento dell'ultima variazione reale
+ * della temperatura.
+ */
+
+let ultimoMovimentoTemperatura =
+  null;
+
 
 let climatizzatoreAcceso = false;
 let automaticoAttivo = false;
@@ -153,32 +211,36 @@ let programmi = {};
 let programmaInModifica = null;
 let salvataggioProgrammaInCorso = false;
 
-let storicoDati = [];
 let graficoStorico = null;
 
 
-/* ===============================
+/* =========================================================
    TREND TEMPERATURA
-   =============================== */
+   ========================================================= */
 
 function mostraTrendStabile() {
 
   statoTrend = "stable";
 
+
   if (!trendArrowEl) {
     return;
   }
 
+
   trendArrowEl.textContent = "•";
+
 
   trendArrowEl.classList.remove(
     "rising",
     "falling"
   );
 
+
   trendArrowEl.classList.add(
     "stable"
   );
+
 
   if (temperatureTrendEl) {
 
@@ -194,20 +256,25 @@ function mostraTrendSalita() {
 
   statoTrend = "rising";
 
+
   if (!trendArrowEl) {
     return;
   }
 
+
   trendArrowEl.textContent = "↑";
+
 
   trendArrowEl.classList.remove(
     "falling",
     "stable"
   );
 
+
   trendArrowEl.classList.add(
     "rising"
   );
+
 
   if (temperatureTrendEl) {
 
@@ -223,20 +290,25 @@ function mostraTrendDiscesa() {
 
   statoTrend = "falling";
 
+
   if (!trendArrowEl) {
     return;
   }
 
+
   trendArrowEl.textContent = "↓";
+
 
   trendArrowEl.classList.remove(
     "rising",
     "stable"
   );
 
+
   trendArrowEl.classList.add(
     "falling"
   );
+
 
   if (temperatureTrendEl) {
 
@@ -252,17 +324,42 @@ function aggiornaTrendTemperatura(
   temperatura
 ) {
 
+  /*
+   * Controlliamo che il dato ricevuto
+   * sia effettivamente un numero.
+   */
+
   if (
     typeof temperatura !== "number" ||
     !Number.isFinite(temperatura)
   ) {
+
     return;
   }
+
+
+  /*
+   * Convertiamo la temperatura in decimi.
+   *
+   * Questo evita completamente problemi
+   * tipo:
+   *
+   * 24.4 - 24.3 =
+   * 0.099999999999
+   */
 
   const temperaturaAttualeDecimi =
     Math.round(
       temperatura * 10
     );
+
+
+  /*
+   * PRIMA LETTURA
+   *
+   * Non esiste ancora una temperatura
+   * precedente da confrontare.
+   */
 
   if (
     temperaturaPrecedenteDecimi === null
@@ -271,43 +368,87 @@ function aggiornaTrendTemperatura(
     temperaturaPrecedenteDecimi =
       temperaturaAttualeDecimi;
 
+
     ultimoMovimentoTemperatura =
       Date.now();
 
+
     mostraTrendStabile();
+
 
     return;
   }
+
 
   const differenza =
     temperaturaAttualeDecimi -
     temperaturaPrecedenteDecimi;
 
-  if (differenza > 0) {
+
+  /*
+   * TEMPERATURA AUMENTATA
+   *
+   * Basta una variazione visualizzata
+   * di almeno +0.1 °C.
+   */
+
+  if (
+    differenza > 0
+  ) {
 
     mostraTrendSalita();
 
+
     ultimoMovimentoTemperatura =
       Date.now();
+
 
     temperaturaPrecedenteDecimi =
       temperaturaAttualeDecimi;
 
+
     return;
   }
 
-  if (differenza < 0) {
+
+  /*
+   * TEMPERATURA DIMINUITA
+   *
+   * Basta una variazione visualizzata
+   * di almeno -0.1 °C.
+   */
+
+  if (
+    differenza < 0
+  ) {
 
     mostraTrendDiscesa();
 
+
     ultimoMovimentoTemperatura =
       Date.now();
+
 
     temperaturaPrecedenteDecimi =
       temperaturaAttualeDecimi;
 
+
     return;
   }
+
+
+  /*
+   * TEMPERATURA IDENTICA
+   *
+   * Non cambiamo immediatamente
+   * la freccia.
+   *
+   * Se era ↑ rimane ↑.
+   * Se era ↓ rimane ↓.
+   *
+   * Soltanto dopo 5 minuti senza
+   * nessuna variazione torniamo •.
+   */
 
   if (
     ultimoMovimentoTemperatura !== null
@@ -316,6 +457,7 @@ function aggiornaTrendTemperatura(
     const tempoSenzaMovimento =
       Date.now() -
       ultimoMovimentoTemperatura;
+
 
     if (
       tempoSenzaMovimento >=
@@ -326,14 +468,15 @@ function aggiornaTrendTemperatura(
     }
   }
 
+
   temperaturaPrecedenteDecimi =
     temperaturaAttualeDecimi;
 }
 
 
-/* ===============================
+/* =========================================================
    SENSORI
-   =============================== */
+   ========================================================= */
 
 function mostraValori(dati) {
 
@@ -342,15 +485,18 @@ function mostraValori(dati) {
       ? dati.temperatura.toFixed(1)
       : "--";
 
+
   umiditaEl.textContent =
     typeof dati.umidita === "number"
       ? dati.umidita.toFixed(0)
       : "--";
 
+
   rssiEl.textContent =
     typeof dati.rssi === "number"
       ? dati.rssi
       : "--";
+
 
   aggiornaTrendTemperatura(
     dati.temperatura
@@ -371,9 +517,11 @@ function mostraOnline() {
   statoEl.textContent =
     "ESP32 online";
 
+
   statusDotEl.classList.add(
     "online"
   );
+
 
   statusDotEl.classList.remove(
     "offline"
@@ -386,47 +534,56 @@ function mostraOffline() {
   statoEl.textContent =
     "ESP32 offline";
 
+
   statusDotEl.classList.remove(
     "online"
   );
+
 
   statusDotEl.classList.add(
     "offline"
   );
 
+
   nascondiValori();
 }
 
+
+/* =========================================================
+   STATO ESP32
+   ========================================================= */
 
 function aggiornaStato() {
 
   if (
     !ultimiDati ||
-    typeof ultimiDati.ultimoAggiornamento !==
-      "number"
+    typeof ultimiDati.ultimoAggiornamento !== "number"
   ) {
 
     ultimoAggiornamentoEl.textContent =
       "--";
 
+
     mostraOffline();
+
 
     return;
   }
 
+
   const timestamp =
     ultimiDati.ultimoAggiornamento;
 
+
   const tempoTrascorso =
-    Date.now() -
-    timestamp;
+    Date.now() - timestamp;
+
 
   ultimoAggiornamentoEl.textContent =
-    new Date(
-      timestamp
-    ).toLocaleString(
+    new Date(timestamp).toLocaleString(
       "it-IT"
     );
+
 
   if (
     tempoTrascorso <=
@@ -437,6 +594,7 @@ function aggiornaStato() {
       ultimiDati
     );
 
+
     mostraOnline();
 
   } else {
@@ -446,442 +604,9 @@ function aggiornaStato() {
 }
 
 
-/* ===============================
-   GRAFICO 12 ORE
-   =============================== */
-
-function formattaOraGrafico(
-  timestamp
-) {
-
-  return new Date(
-    timestamp
-  ).toLocaleTimeString(
-    "it-IT",
-    {
-      hour: "2-digit",
-      minute: "2-digit"
-    }
-  );
-}
-
-
-function normalizzaStorico(
-  dati
-) {
-
-  if (!dati) {
-    return [];
-  }
-
-  const limite =
-    Date.now() -
-    TEMPO_STORICO_GRAFICO_MS;
-
-  return Object.values(
-    dati
-  )
-    .filter(
-      (campione) => {
-
-        return (
-          campione &&
-          typeof campione.timestamp ===
-            "number" &&
-          typeof campione.temperatura ===
-            "number" &&
-          typeof campione.umidita ===
-            "number" &&
-          campione.timestamp >=
-            limite
-        );
-      }
-    )
-    .sort(
-      (a, b) =>
-        a.timestamp -
-        b.timestamp
-    );
-}
-
-
-function distruggiGraficoStorico() {
-
-  if (graficoStorico) {
-
-    graficoStorico.destroy();
-
-    graficoStorico = null;
-  }
-}
-
-
-function renderGraficoStorico() {
-
-  if (!historyChartCanvasEl) {
-    return;
-  }
-
-  if (
-    storicoDati.length === 0
-  ) {
-
-    distruggiGraficoStorico();
-
-    historyChartCanvasEl.hidden =
-      true;
-
-    if (historyEmptyEl) {
-
-      historyEmptyEl.hidden =
-        false;
-    }
-
-    if (historyPointsEl) {
-
-      historyPointsEl.textContent =
-        "0 campioni";
-    }
-
-    return;
-  }
-
-  historyChartCanvasEl.hidden =
-    false;
-
-  if (historyEmptyEl) {
-
-    historyEmptyEl.hidden =
-      true;
-  }
-
-  if (historyPointsEl) {
-
-    historyPointsEl.textContent =
-      `${storicoDati.length} campioni`;
-  }
-
-  if (
-    typeof Chart === "undefined"
-  ) {
-
-    console.error(
-      "Chart.js non disponibile"
-    );
-
-    return;
-  }
-
-  const labels =
-    storicoDati.map(
-      (campione) =>
-        formattaOraGrafico(
-          campione.timestamp
-        )
-    );
-
-  const temperature =
-    storicoDati.map(
-      (campione) =>
-        campione.temperatura
-    );
-
-  const umidita =
-    storicoDati.map(
-      (campione) =>
-        campione.umidita
-    );
-
-  distruggiGraficoStorico();
-
-  const ctx =
-    historyChartCanvasEl.getContext(
-      "2d"
-    );
-
-  graficoStorico =
-    new Chart(
-      ctx,
-      {
-
-        type: "line",
-
-        data: {
-
-          labels,
-
-          datasets: [
-
-            {
-              label:
-                "Temperatura °C",
-
-              data:
-                temperature,
-
-              yAxisID:
-                "yTemperatura",
-
-              borderColor:
-                "#ff806f",
-
-              backgroundColor:
-                "rgba(255,128,111,0.12)",
-
-              pointRadius:
-                0,
-
-              pointHoverRadius:
-                4,
-
-              borderWidth:
-                2.2,
-
-              tension:
-                0.28,
-
-              spanGaps:
-                true
-            },
-
-            {
-              label:
-                "Umidità %",
-
-              data:
-                umidita,
-
-              yAxisID:
-                "yUmidita",
-
-              borderColor:
-                "#62adff",
-
-              backgroundColor:
-                "rgba(98,173,255,0.12)",
-
-              pointRadius:
-                0,
-
-              pointHoverRadius:
-                4,
-
-              borderWidth:
-                2.2,
-
-              tension:
-                0.28,
-
-              spanGaps:
-                true
-            }
-
-          ]
-        },
-
-        options: {
-
-          responsive:
-            true,
-
-          maintainAspectRatio:
-            false,
-
-          interaction: {
-            mode:
-              "index",
-
-            intersect:
-              false
-          },
-
-          plugins: {
-
-            legend: {
-
-              position:
-                "top",
-
-              labels: {
-
-                color:
-                  "#c5cce0",
-
-                usePointStyle:
-                  true,
-
-                boxWidth:
-                  8,
-
-                boxHeight:
-                  8,
-
-                padding:
-                  18
-              }
-            },
-
-            tooltip: {
-
-              backgroundColor:
-                "rgba(8,13,29,0.96)",
-
-              titleColor:
-                "#ffffff",
-
-              bodyColor:
-                "#d9e0f4",
-
-              borderColor:
-                "rgba(255,255,255,0.10)",
-
-              borderWidth:
-                1,
-
-              callbacks: {
-
-                title(
-                  elementi
-                ) {
-
-                  if (
-                    !elementi.length
-                  ) {
-
-                    return "";
-                  }
-
-                  const indice =
-                    elementi[0]
-                      .dataIndex;
-
-                  return new Date(
-                    storicoDati[
-                      indice
-                    ].timestamp
-                  ).toLocaleString(
-                    "it-IT"
-                  );
-                }
-              }
-            }
-          },
-
-          scales: {
-
-            x: {
-
-              grid: {
-
-                color:
-                  "rgba(255,255,255,0.045)"
-              },
-
-              ticks: {
-
-                color:
-                  "#77829d",
-
-                maxRotation:
-                  0,
-
-                autoSkip:
-                  true,
-
-                maxTicksLimit:
-                  7
-              }
-            },
-
-            yTemperatura: {
-
-              type:
-                "linear",
-
-              position:
-                "left",
-
-              grid: {
-
-                color:
-                  "rgba(255,255,255,0.055)"
-              },
-
-              ticks: {
-
-                color:
-                  "#ff9b8e",
-
-                callback:
-                  (valore) =>
-                    `${valore}°`
-              },
-
-              title: {
-
-                display:
-                  true,
-
-                text:
-                  "Temperatura °C",
-
-                color:
-                  "#ff9b8e"
-              }
-            },
-
-            yUmidita: {
-
-              type:
-                "linear",
-
-              position:
-                "right",
-
-              min:
-                0,
-
-              max:
-                100,
-
-              grid: {
-
-                drawOnChartArea:
-                  false
-              },
-
-              ticks: {
-
-                color:
-                  "#8bc5ff",
-
-                callback:
-                  (valore) =>
-                    `${valore}%`
-              },
-
-              title: {
-
-                display:
-                  true,
-
-                text:
-                  "Umidità %",
-
-                color:
-                  "#8bc5ff"
-              }
-            }
-          }
-        }
-      }
-    );
-}
-
-
-/* ===============================
+/* =========================================================
    CLIMATIZZATORE
-   =============================== */
+   ========================================================= */
 
 function aggiornaPulsante() {
 
@@ -890,13 +615,16 @@ function aggiornaPulsante() {
       ? "ACCESO"
       : "SPENTO";
 
+
   powerButtonEl.textContent =
     climatizzatoreAcceso
       ? "SPEGNI"
       : "ACCENDI";
 
+
   powerButtonEl.disabled =
     comandoPowerInCorso;
+
 
   if (
     comandoPowerInCorso
@@ -908,37 +636,20 @@ function aggiornaPulsante() {
 }
 
 
-/* ===============================
-   PROGRAMMI
-   =============================== */
+/* =========================================================
+   PROGRAMMI - FUNZIONI BASE
+   ========================================================= */
 
-function escapeHtml(
-  testo
-) {
+function escapeHtml(testo) {
 
   return String(
     testo ?? ""
   )
-    .replaceAll(
-      "&",
-      "&amp;"
-    )
-    .replaceAll(
-      "<",
-      "&lt;"
-    )
-    .replaceAll(
-      ">",
-      "&gt;"
-    )
-    .replaceAll(
-      '"',
-      "&quot;"
-    )
-    .replaceAll(
-      "'",
-      "&#039;"
-    );
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 
@@ -956,9 +667,12 @@ function normalizzaGiorni(
     false
   ];
 
+
   if (!giorni) {
+
     return risultato;
   }
+
 
   for (
     let i = 0;
@@ -968,9 +682,9 @@ function normalizzaGiorni(
 
     risultato[i] =
       giorni[i] === true ||
-      giorni[String(i)] ===
-        true;
+      giorni[String(i)] === true;
   }
+
 
   return risultato;
 }
@@ -982,6 +696,7 @@ function creaGiorniFirebase(
 
   const risultato = {};
 
+
   for (
     let i = 0;
     i < 7;
@@ -992,6 +707,7 @@ function creaGiorniFirebase(
       giorni[i] === true;
   }
 
+
   return risultato;
 }
 
@@ -1001,12 +717,12 @@ function orarioValido(
 ) {
 
   if (
-    typeof orario !==
-    "string"
+    typeof orario !== "string"
   ) {
 
     return false;
   }
+
 
   return /^([01]\d|2[0-3]):[0-5]\d$/.test(
     orario
@@ -1014,16 +730,25 @@ function orarioValido(
 }
 
 
+/* =========================================================
+   VISUALIZZAZIONE PROGRAMMI
+   ========================================================= */
+
 function renderProgrammi() {
 
-  if (!programListEl) {
+  if (
+    !programListEl
+  ) {
+
     return;
   }
+
 
   const elementi =
     Object.entries(
       programmi
     );
+
 
   if (
     elementi.length === 0
@@ -1036,153 +761,172 @@ function renderProgrammi() {
       </p>
     `;
 
+
     return;
   }
 
+
   programListEl.innerHTML =
-    elementi
-      .map(
-        ([id, programma]) => {
+    elementi.map(
+      ([id, programma]) => {
 
-          const giorni =
-            normalizzaGiorni(
-              programma.giorni
-            );
+        const giorni =
+          normalizzaGiorni(
+            programma.giorni
+          );
 
-          const giorniHtml =
-            NOMI_GIORNI
-              .map(
-                (
-                  nome,
-                  indice
-                ) => `
-                  <span
-                    class="program-day ${
-                      giorni[indice]
-                        ? "active"
-                        : ""
-                    }"
-                  >
-                    ${nome}
-                  </span>
-                `
-              )
-              .join("");
 
-          const attivo =
-            programma.attivo ===
-            true;
+        const giorniHtml =
+          NOMI_GIORNI.map(
+            (nome, indice) => `
 
-          const nome =
-            escapeHtml(
-              programma.nome ||
-              "Programma"
-            );
+              <span
+                class="program-day ${
+                  giorni[indice]
+                    ? "active"
+                    : ""
+                }"
+              >
+                ${nome}
+              </span>
 
-          const oraAccensione =
-            orarioValido(
-              programma.oraAccensione
-            )
-              ? programma.oraAccensione
-              : "--:--";
+            `
+          ).join("");
 
-          const oraSpegnimento =
-            orarioValido(
-              programma.oraSpegnimento
-            )
-              ? programma.oraSpegnimento
-              : "--:--";
 
-          return `
-            <article
-              class="program-card ${
-                attivo
-                  ? ""
-                  : "is-disabled"
-              }"
-            >
+        const attivo =
+          programma.attivo === true;
 
-              <div class="program-header">
 
-                <h3 class="program-name">
-                  ${nome}
-                </h3>
+        const nome =
+          escapeHtml(
+            programma.nome ||
+            "Programma"
+          );
 
-                <span class="program-status">
-                  ${
-                    attivo
-                      ? "Attivo"
-                      : "Disattivo"
-                  }
+
+        const oraAccensione =
+          orarioValido(
+            programma.oraAccensione
+          )
+            ? programma.oraAccensione
+            : "--:--";
+
+
+        const oraSpegnimento =
+          orarioValido(
+            programma.oraSpegnimento
+          )
+            ? programma.oraSpegnimento
+            : "--:--";
+
+
+        return `
+
+          <article
+            class="program-card ${
+              attivo
+                ? ""
+                : "is-disabled"
+            }"
+          >
+
+            <div class="program-header">
+
+              <h3 class="program-name">
+                ${nome}
+              </h3>
+
+
+              <span class="program-status">
+
+                ${
+                  attivo
+                    ? "Attivo"
+                    : "Disattivo"
+                }
+
+              </span>
+
+            </div>
+
+
+            <div class="program-days">
+
+              ${giorniHtml}
+
+            </div>
+
+
+            <div class="program-times">
+
+
+              <div class="program-time on">
+
+                <span class="program-time-label">
+                  Accensione
                 </span>
 
-              </div>
-
-              <div class="program-days">
-                ${giorniHtml}
-              </div>
-
-              <div class="program-times">
-
-                <div class="program-time on">
-
-                  <span class="program-time-label">
-                    Accensione
-                  </span>
-
-                  <strong class="program-time-value">
-                    ${oraAccensione}
-                  </strong>
-
-                </div>
-
-                <div class="program-time off">
-
-                  <span class="program-time-label">
-                    Spegnimento
-                  </span>
-
-                  <strong class="program-time-value">
-                    ${oraSpegnimento}
-                  </strong>
-
-                </div>
+                <strong class="program-time-value">
+                  ${oraAccensione}
+                </strong>
 
               </div>
 
-              <div class="program-actions">
 
-                <button
-                  class="program-action-button edit"
-                  type="button"
-                  data-action="edit"
-                  data-program-id="${escapeHtml(id)}"
-                >
-                  MODIFICA
-                </button>
+              <div class="program-time off">
 
-                <button
-                  class="program-action-button delete"
-                  type="button"
-                  data-action="delete"
-                  data-program-id="${escapeHtml(id)}"
-                >
-                  ELIMINA
-                </button>
+                <span class="program-time-label">
+                  Spegnimento
+                </span>
+
+                <strong class="program-time-value">
+                  ${oraSpegnimento}
+                </strong>
 
               </div>
 
-            </article>
-          `;
-        }
-      )
-      .join("");
+
+            </div>
+
+
+            <div class="program-actions">
+
+
+              <button
+                class="program-action-button edit"
+                type="button"
+                data-action="edit"
+                data-program-id="${escapeHtml(id)}"
+              >
+                MODIFICA
+              </button>
+
+
+              <button
+                class="program-action-button delete"
+                type="button"
+                data-action="delete"
+                data-program-id="${escapeHtml(id)}"
+              >
+                ELIMINA
+              </button>
+
+
+            </div>
+
+
+          </article>
+        `;
+      }
+
+    ).join("");
 }
 
 
-/* ===============================
-   MODALE PROGRAMMI
-   =============================== */
+/* =========================================================
+   FINESTRA PROGRAMMA
+   ========================================================= */
 
 function creaModaleProgramma() {
 
@@ -1195,19 +939,24 @@ function creaModaleProgramma() {
     return;
   }
 
+
   const contenitore =
     document.createElement(
       "div"
     );
 
+
   contenitore.id =
     "scheduleModal";
+
 
   contenitore.className =
     "schedule-modal";
 
+
   contenitore.hidden =
     true;
+
 
   contenitore.innerHTML = `
 
@@ -1234,6 +983,7 @@ function creaModaleProgramma() {
 
         </div>
 
+
         <button
           id="scheduleCloseButton"
           class="schedule-close"
@@ -1244,10 +994,12 @@ function creaModaleProgramma() {
 
       </div>
 
+
       <form
         id="scheduleForm"
         class="schedule-form"
       >
+
 
         <label class="schedule-field">
 
@@ -1266,7 +1018,9 @@ function creaModaleProgramma() {
 
         </label>
 
+
         <div class="schedule-time-grid">
+
 
           <label class="schedule-field">
 
@@ -1283,6 +1037,7 @@ function creaModaleProgramma() {
 
           </label>
 
+
           <label class="schedule-field">
 
             <span class="schedule-field-label">
@@ -1298,7 +1053,9 @@ function creaModaleProgramma() {
 
           </label>
 
+
         </div>
+
 
         <div class="schedule-field">
 
@@ -1306,37 +1063,34 @@ function creaModaleProgramma() {
             Giorni
           </span>
 
+
           <div class="schedule-day-grid">
 
             ${
-              NOMI_GIORNI
-                .map(
-                  (
-                    nome,
-                    indice
-                  ) => `
+              NOMI_GIORNI.map(
+                (nome, indice) => `
 
-                    <label class="schedule-day-option">
+                  <label class="schedule-day-option">
 
-                      <input
-                        type="checkbox"
-                        data-day="${indice}"
-                      >
+                    <input
+                      type="checkbox"
+                      data-day="${indice}"
+                    >
 
-                      <span>
-                        ${nome}
-                      </span>
+                    <span>
+                      ${nome}
+                    </span>
 
-                    </label>
+                  </label>
 
-                  `
-                )
-                .join("")
+                `
+              ).join("")
             }
 
           </div>
 
         </div>
+
 
         <div class="schedule-enabled-row">
 
@@ -1352,6 +1106,7 @@ function creaModaleProgramma() {
 
           </div>
 
+
           <label class="switch">
 
             <input
@@ -1366,6 +1121,7 @@ function creaModaleProgramma() {
 
         </div>
 
+
         <div class="schedule-form-actions">
 
           <button
@@ -1375,6 +1131,7 @@ function creaModaleProgramma() {
           >
             ANNULLA
           </button>
+
 
           <button
             id="scheduleSaveButton"
@@ -1386,14 +1143,18 @@ function creaModaleProgramma() {
 
         </div>
 
+
       </form>
+
 
     </div>
   `;
 
+
   document.body.appendChild(
     contenitore
   );
+
 
   document
     .getElementById(
@@ -1404,6 +1165,7 @@ function creaModaleProgramma() {
       chiudiModaleProgramma
     );
 
+
   document
     .getElementById(
       "scheduleCancelButton"
@@ -1412,6 +1174,7 @@ function creaModaleProgramma() {
       "click",
       chiudiModaleProgramma
     );
+
 
   document
     .getElementById(
@@ -1422,8 +1185,10 @@ function creaModaleProgramma() {
       salvaProgramma
     );
 
+
   contenitore.addEventListener(
     "click",
+
     (evento) => {
 
       if (
@@ -1438,49 +1203,62 @@ function creaModaleProgramma() {
 }
 
 
+/* =========================================================
+   APERTURA PROGRAMMA
+   ========================================================= */
+
 function apriModaleProgramma(
   id = null
 ) {
 
   creaModaleProgramma();
 
+
   programmaInModifica =
     id;
+
 
   const modalEl =
     document.getElementById(
       "scheduleModal"
     );
 
+
   const titleEl =
     document.getElementById(
       "scheduleDialogTitle"
     );
+
 
   const nameEl =
     document.getElementById(
       "scheduleName"
     );
 
+
   const timeOnEl =
     document.getElementById(
       "scheduleTimeOn"
     );
+
 
   const timeOffEl =
     document.getElementById(
       "scheduleTimeOff"
     );
 
+
   const enabledEl =
     document.getElementById(
       "scheduleEnabled"
     );
 
+
   const checkboxes =
     modalEl.querySelectorAll(
       "[data-day]"
     );
+
 
   if (
     id &&
@@ -1490,12 +1268,14 @@ function apriModaleProgramma(
     const programma =
       programmi[id];
 
+
     titleEl.textContent =
       "Modifica programma";
 
+
     nameEl.value =
-      programma.nome ||
-      "";
+      programma.nome || "";
+
 
     timeOnEl.value =
       orarioValido(
@@ -1504,6 +1284,7 @@ function apriModaleProgramma(
         ? programma.oraAccensione
         : "";
 
+
     timeOffEl.value =
       orarioValido(
         programma.oraSpegnimento
@@ -1511,14 +1292,16 @@ function apriModaleProgramma(
         ? programma.oraSpegnimento
         : "";
 
+
     enabledEl.checked =
-      programma.attivo ===
-      true;
+      programma.attivo === true;
+
 
     const giorni =
       normalizzaGiorni(
         programma.giorni
       );
+
 
     checkboxes.forEach(
       (checkbox) => {
@@ -1528,22 +1311,27 @@ function apriModaleProgramma(
             checkbox.dataset.day
           );
 
+
         checkbox.checked =
           giorni[indice];
       }
     );
+
 
   } else {
 
     titleEl.textContent =
       "Nuovo programma";
 
+
     nameEl.value = "";
     timeOnEl.value = "";
     timeOffEl.value = "";
 
+
     enabledEl.checked =
       true;
+
 
     checkboxes.forEach(
       (checkbox) => {
@@ -1554,10 +1342,15 @@ function apriModaleProgramma(
     );
   }
 
+
   modalEl.hidden =
     false;
 }
 
+
+/* =========================================================
+   CHIUSURA PROGRAMMA
+   ========================================================= */
 
 function chiudiModaleProgramma() {
 
@@ -1566,22 +1359,31 @@ function chiudiModaleProgramma() {
       "scheduleModal"
     );
 
-  if (modalEl) {
+
+  if (
+    modalEl
+  ) {
 
     modalEl.hidden =
       true;
   }
+
 
   programmaInModifica =
     null;
 }
 
 
+/* =========================================================
+   SALVATAGGIO PROGRAMMA
+   ========================================================= */
+
 async function salvaProgramma(
   evento
 ) {
 
   evento.preventDefault();
+
 
   if (
     salvataggioProgrammaInCorso
@@ -1590,39 +1392,48 @@ async function salvaProgramma(
     return;
   }
 
+
   const nameEl =
     document.getElementById(
       "scheduleName"
     );
+
 
   const timeOnEl =
     document.getElementById(
       "scheduleTimeOn"
     );
 
+
   const timeOffEl =
     document.getElementById(
       "scheduleTimeOff"
     );
+
 
   const enabledEl =
     document.getElementById(
       "scheduleEnabled"
     );
 
+
   const saveButtonEl =
     document.getElementById(
       "scheduleSaveButton"
     );
 
+
   const nome =
     nameEl.value.trim();
+
 
   const oraAccensione =
     timeOnEl.value;
 
+
   const oraSpegnimento =
     timeOffEl.value;
+
 
   if (!nome) {
 
@@ -1630,8 +1441,10 @@ async function salvaProgramma(
       "Inserisci un nome per il programma."
     );
 
+
     return;
   }
+
 
   if (
     !orarioValido(
@@ -1646,13 +1459,16 @@ async function salvaProgramma(
       "Inserisci gli orari di accensione e spegnimento."
     );
 
+
     return;
   }
+
 
   const checkboxes =
     document.querySelectorAll(
       "#scheduleModal [data-day]"
     );
+
 
   const giorni = [
     false,
@@ -1664,6 +1480,7 @@ async function salvaProgramma(
     false
   ];
 
+
   checkboxes.forEach(
     (checkbox) => {
 
@@ -1672,15 +1489,16 @@ async function salvaProgramma(
           checkbox.dataset.day
         );
 
+
       giorni[indice] =
         checkbox.checked;
     }
   );
 
+
   if (
     !giorni.some(
-      (giorno) =>
-        giorno
+      (giorno) => giorno
     )
   ) {
 
@@ -1688,8 +1506,10 @@ async function salvaProgramma(
       "Seleziona almeno un giorno."
     );
 
+
     return;
   }
+
 
   const datiProgramma = {
 
@@ -1708,14 +1528,18 @@ async function salvaProgramma(
     oraSpegnimento
   };
 
+
   salvataggioProgrammaInCorso =
     true;
+
 
   saveButtonEl.disabled =
     true;
 
+
   saveButtonEl.textContent =
     "SALVATAGGIO...";
+
 
   try {
 
@@ -1732,10 +1556,12 @@ async function salvaProgramma(
           `dispositivi/cameretta/programmi/${programmaInModifica}`
         );
 
+
       await set(
         programmaRef,
         datiProgramma
       );
+
 
     } else {
 
@@ -1744,13 +1570,16 @@ async function salvaProgramma(
           programmiRef
         );
 
+
       await set(
         nuovoProgrammaRef,
         datiProgramma
       );
     }
 
+
     chiudiModaleProgramma();
+
 
   } catch (
     errore
@@ -1761,23 +1590,31 @@ async function salvaProgramma(
       errore
     );
 
+
     alert(
       "Errore durante il salvataggio del programma."
     );
+
 
   } finally {
 
     salvataggioProgrammaInCorso =
       false;
 
+
     saveButtonEl.disabled =
       false;
+
 
     saveButtonEl.textContent =
       "SALVA PROGRAMMA";
   }
 }
 
+
+/* =========================================================
+   ELIMINA PROGRAMMA
+   ========================================================= */
 
 async function eliminaProgramma(
   id
@@ -1786,18 +1623,28 @@ async function eliminaProgramma(
   const programma =
     programmi[id];
 
-  if (!programma) {
+
+  if (
+    !programma
+  ) {
+
     return;
   }
+
 
   const conferma =
     confirm(
       `Vuoi eliminare il programma "${programma.nome || "Programma"}"?`
     );
 
-  if (!conferma) {
+
+  if (
+    !conferma
+  ) {
+
     return;
   }
+
 
   try {
 
@@ -1807,9 +1654,11 @@ async function eliminaProgramma(
         `dispositivi/cameretta/programmi/${id}`
       );
 
+
     await remove(
       programmaRef
     );
+
 
   } catch (
     errore
@@ -1820,6 +1669,7 @@ async function eliminaProgramma(
       errore
     );
 
+
     alert(
       "Errore durante l'eliminazione del programma."
     );
@@ -1827,73 +1677,502 @@ async function eliminaProgramma(
 }
 
 
-/* ===============================
-   FIREBASE SENSORI
-   =============================== */
+/* =========================================================
+   STORICO - GRAFICO ULTIME 12 ORE
+   ========================================================= */
 
-onValue(
-  sensoreRef,
+function numeroValido(valore) {
+  const numero = Number(valore);
 
-  (snapshot) => {
+  return Number.isFinite(numero)
+    ? numero
+    : null;
+}
 
-    ultimiDati =
-      snapshot.val();
 
-    if (!ultimiDati) {
+function arrotondaDecimo(valore) {
+  return Math.round(
+    Number(valore) * 10
+  ) / 10;
+}
 
-      erroreEl.hidden =
-        false;
 
-      erroreEl.textContent =
-        "Nessun dato disponibile nel database.";
+function formattaTemperaturaAsse(valore) {
+  return (
+    Number(valore)
+      .toFixed(1)
+      .replace(".", ",") +
+    "°"
+  );
+}
 
-      aggiornaStato();
 
-      return;
-    }
+function formattaOraStorico(timestamp) {
+  return new Date(timestamp)
+    .toLocaleTimeString(
+      "it-IT",
+      {
+        hour: "2-digit",
+        minute: "2-digit"
+      }
+    );
+}
 
-    erroreEl.hidden =
-      true;
 
-    aggiornaStato();
-  },
+function calcolaLimitiTemperatura(punti) {
 
-  (errore) => {
-
-    console.error(
-      "Errore lettura sensori:",
-      errore
+  const temperature =
+    punti.map(
+      (punto) => punto.temperatura
     );
 
-    erroreEl.hidden =
-      false;
 
-    erroreEl.textContent =
-      "Impossibile leggere i dati da Firebase.";
+  let minimo =
+    Math.floor(
+      Math.min(...temperature) * 10
+    ) / 10;
 
-    ultimiDati =
-      null;
 
-    aggiornaStato();
+  let massimo =
+    Math.ceil(
+      Math.max(...temperature) * 10
+    ) / 10;
+
+
+  /*
+   * Se tutti i campioni hanno la stessa temperatura,
+   * allarghiamo leggermente l'asse per evitare un grafico piatto.
+   */
+  if (minimo === massimo) {
+    minimo =
+      arrotondaDecimo(
+        minimo - 0.2
+      );
+
+    massimo =
+      arrotondaDecimo(
+        massimo + 0.2
+      );
   }
-);
 
 
-/* ===============================
-   FIREBASE STORICO
-   =============================== */
+  return {
+    minimo,
+    massimo
+  };
+}
+
+
+function aggiornaGraficoStorico(punti) {
+
+  if (
+    !historyChartEl ||
+    !historySampleCountEl
+  ) {
+    return;
+  }
+
+
+  historySampleCountEl.textContent =
+    `${punti.length} ${
+      punti.length === 1
+        ? "campione"
+        : "campioni"
+    }`;
+
+
+  if (historyEmptyEl) {
+    historyEmptyEl.hidden =
+      punti.length > 0;
+  }
+
+
+  if (punti.length === 0) {
+
+    if (graficoStorico) {
+      graficoStorico.destroy();
+      graficoStorico = null;
+    }
+
+    return;
+  }
+
+
+  const limitiTemperatura =
+    calcolaLimitiTemperatura(
+      punti
+    );
+
+
+  const datiTemperatura =
+    punti.map(
+      (punto) => ({
+        x: punto.timestamp,
+        y: punto.temperatura
+      })
+    );
+
+
+  const datiUmidita =
+    punti.map(
+      (punto) => ({
+        x: punto.timestamp,
+        y: punto.umidita
+      })
+    );
+
+
+  const primoTimestamp =
+    punti[0].timestamp;
+
+
+  const ultimoTimestamp =
+    punti[
+      punti.length - 1
+    ].timestamp;
+
+
+  const configurazione = {
+
+    type: "line",
+
+    data: {
+
+      datasets: [
+
+        {
+          label: "Temperatura °C",
+          data: datiTemperatura,
+          yAxisID: "yTemperatura",
+          borderColor: "#ff7d6e",
+          backgroundColor: "#ff7d6e",
+          borderWidth: 2.5,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          stepped: true,
+          spanGaps: true
+        },
+
+        {
+          label: "Umidità %",
+          data: datiUmidita,
+          yAxisID: "yUmidita",
+          borderColor: "#5aaeff",
+          backgroundColor: "#5aaeff",
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          tension: 0.15,
+          spanGaps: true
+        }
+
+      ]
+    },
+
+    options: {
+
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      normalized: true,
+
+      interaction: {
+        mode: "index",
+        intersect: false
+      },
+
+      plugins: {
+
+        legend: {
+          position: "top",
+
+          labels: {
+            color: "#dce3f8",
+            usePointStyle: true,
+            boxWidth: 10,
+            boxHeight: 10,
+            padding: 18
+          }
+        },
+
+        tooltip: {
+
+          callbacks: {
+
+            title: (elementi) => {
+
+              if (
+                !elementi ||
+                elementi.length === 0
+              ) {
+                return "";
+              }
+
+              const timestamp =
+                elementi[0].parsed.x;
+
+              return new Date(timestamp)
+                .toLocaleString(
+                  "it-IT"
+                );
+            },
+
+            label: (contesto) => {
+
+              if (
+                contesto.dataset.yAxisID ===
+                  "yTemperatura"
+              ) {
+
+                return (
+                  "Temperatura: " +
+                  Number(
+                    contesto.parsed.y
+                  )
+                    .toFixed(1)
+                    .replace(".", ",") +
+                  " °C"
+                );
+              }
+
+              return (
+                "Umidità: " +
+                Number(
+                  contesto.parsed.y
+                )
+                  .toFixed(0) +
+                " %"
+              );
+            }
+          }
+        }
+      },
+
+      scales: {
+
+        x: {
+
+          type: "linear",
+
+          min: primoTimestamp,
+          max: ultimoTimestamp,
+
+          grid: {
+            color: "rgba(255,255,255,0.06)"
+          },
+
+          border: {
+            color: "rgba(255,255,255,0.12)"
+          },
+
+          ticks: {
+            color: "#8f9ab8",
+            maxTicksLimit: 7,
+
+            callback: (valore) =>
+              formattaOraStorico(
+                Number(valore)
+              )
+          }
+        },
+
+        yTemperatura: {
+
+          type: "linear",
+          position: "left",
+
+          min:
+            limitiTemperatura.minimo,
+
+          max:
+            limitiTemperatura.massimo,
+
+          grid: {
+            color: "rgba(255,255,255,0.07)"
+          },
+
+          border: {
+            color: "rgba(255,125,110,0.38)"
+          },
+
+          title: {
+            display: true,
+            text: "Temperatura °C",
+            color: "#ff9589"
+          },
+
+          ticks: {
+            color: "#ff9589",
+
+            /*
+             * QUESTA È LA CORREZIONE DEI NUMERI
+             * tipo 30.200000000000003.
+             */
+            stepSize: 0.1,
+            precision: 1,
+
+            callback: (valore) =>
+              formattaTemperaturaAsse(
+                valore
+              )
+          }
+        },
+
+        yUmidita: {
+
+          type: "linear",
+          position: "right",
+
+          min: 0,
+          max: 100,
+
+          grid: {
+            drawOnChartArea: false
+          },
+
+          border: {
+            color: "rgba(90,174,255,0.38)"
+          },
+
+          title: {
+            display: true,
+            text: "Umidità %",
+            color: "#83c4ff"
+          },
+
+          ticks: {
+            color: "#83c4ff",
+            stepSize: 10,
+
+            callback: (valore) =>
+              `${Math.round(
+                Number(valore)
+              )}%`
+          }
+        }
+      }
+    }
+  };
+
+
+  if (graficoStorico) {
+    graficoStorico.destroy();
+  }
+
+
+  graficoStorico =
+    new Chart(
+      historyChartEl,
+      configurazione
+    );
+}
+
+
+/*
+ * Firebase push genera chiavi ordinate temporalmente.
+ * limitToLast(720) evita di scaricare tutto lo storico,
+ * che cresce di circa 1440 record al giorno.
+ */
+const storicoQuery =
+  query(
+    storicoRef,
+    limitToLast(
+      MAX_CAMPIONI_STORICO
+    )
+  );
+
 
 onValue(
-  storicoRef,
+
+  storicoQuery,
 
   (snapshot) => {
 
-    storicoDati =
-      normalizzaStorico(
-        snapshot.val()
-      );
+    const dati =
+      snapshot.val() || {};
 
-    renderGraficoStorico();
+
+    const limiteTemporale =
+      Date.now() -
+      ORE_STORICO *
+        60 *
+        60 *
+        1000;
+
+
+    const punti =
+      Object.values(dati)
+
+        .map(
+          (elemento) => {
+
+            if (
+              !elemento ||
+              typeof elemento !==
+                "object"
+            ) {
+              return null;
+            }
+
+
+            const timestamp =
+              numeroValido(
+                elemento.timestamp
+              );
+
+
+            const temperatura =
+              numeroValido(
+                elemento.temperatura
+              );
+
+
+            const umidita =
+              numeroValido(
+                elemento.umidita
+              );
+
+
+            if (
+              timestamp === null ||
+              temperatura === null ||
+              umidita === null
+            ) {
+              return null;
+            }
+
+
+            return {
+              timestamp,
+              temperatura:
+                arrotondaDecimo(
+                  temperatura
+                ),
+              umidita:
+                arrotondaDecimo(
+                  umidita
+                )
+            };
+          }
+        )
+
+        .filter(
+          (punto) =>
+            punto !== null &&
+            punto.timestamp >=
+              limiteTemporale
+        )
+
+        .sort(
+          (a, b) =>
+            a.timestamp -
+            b.timestamp
+        );
+
+
+    aggiornaGraficoStorico(
+      punti
+    );
   },
 
   (errore) => {
@@ -1903,25 +2182,90 @@ onValue(
       errore
     );
 
-    storicoDati = [];
 
-    renderGraficoStorico();
+    if (historySampleCountEl) {
+      historySampleCountEl.textContent =
+        "Errore storico";
+    }
+
 
     if (historyEmptyEl) {
-
-      historyEmptyEl.hidden =
-        false;
-
+      historyEmptyEl.hidden = false;
       historyEmptyEl.textContent =
-        "Impossibile leggere lo storico.";
+        "Impossibile leggere lo storico da Firebase.";
     }
   }
 );
 
 
-/* ===============================
-   FIREBASE CLIMA
-   =============================== */
+/* =========================================================
+   LETTURA SENSORI FIREBASE
+   ========================================================= */
+
+onValue(
+  sensoreRef,
+
+  (snapshot) => {
+
+    ultimiDati =
+      snapshot.val();
+
+
+    if (
+      !ultimiDati
+    ) {
+
+      erroreEl.hidden =
+        false;
+
+
+      erroreEl.textContent =
+        "Nessun dato disponibile nel database.";
+
+
+      aggiornaStato();
+
+
+      return;
+    }
+
+
+    erroreEl.hidden =
+      true;
+
+
+    aggiornaStato();
+  },
+
+
+  (errore) => {
+
+    console.error(
+      "Errore lettura sensori:",
+      errore
+    );
+
+
+    erroreEl.hidden =
+      false;
+
+
+    erroreEl.textContent =
+      "Impossibile leggere i dati da Firebase.";
+
+
+    ultimiDati =
+      null;
+
+
+    aggiornaStato();
+  }
+);
+
+
+/* =========================================================
+   LETTURA CLIMATIZZATORE FIREBASE
+   ========================================================= */
 
 onValue(
   climaRef,
@@ -1931,59 +2275,72 @@ onValue(
     const dati =
       snapshot.val();
 
-    if (!dati) {
+
+    if (
+      !dati
+    ) {
 
       climatizzatoreAcceso =
         false;
 
+
       automaticoAttivo =
         false;
+
 
       autoModeEl.checked =
         false;
 
+
       tempOnEl.value =
         26;
+
 
       tempOffEl.value =
         24;
 
+
       aggiornaPulsante();
+
 
       return;
     }
 
+
     climatizzatoreAcceso =
-      dati.power ===
-      true;
+      dati.power === true;
+
 
     automaticoAttivo =
-      dati.automatico ===
-      true;
+      dati.automatico === true;
+
 
     autoModeEl.checked =
       automaticoAttivo;
 
+
     tempOnEl.value =
       typeof dati.sogliaAccensione ===
-        "number"
+      "number"
         ? dati.sogliaAccensione
         : 26;
 
+
     tempOffEl.value =
       typeof dati.sogliaSpegnimento ===
-        "number"
+      "number"
         ? dati.sogliaSpegnimento
         : 24;
+
 
     aggiornaPulsante();
   }
 );
 
 
-/* ===============================
-   FIREBASE PROGRAMMI
-   =============================== */
+/* =========================================================
+   LETTURA PROGRAMMI FIREBASE
+   ========================================================= */
 
 onValue(
   programmiRef,
@@ -1991,11 +2348,12 @@ onValue(
   (snapshot) => {
 
     programmi =
-      snapshot.val() ||
-      {};
+      snapshot.val() || {};
+
 
     renderProgrammi();
   },
+
 
   (errore) => {
 
@@ -2004,7 +2362,10 @@ onValue(
       errore
     );
 
-    if (programListEl) {
+
+    if (
+      programListEl
+    ) {
 
       programListEl.innerHTML = `
         <p class="program-empty">
@@ -2016,9 +2377,9 @@ onValue(
 );
 
 
-/* ===============================
-   POWER
-   =============================== */
+/* =========================================================
+   PULSANTE ACCENSIONE / SPEGNIMENTO
+   ========================================================= */
 
 powerButtonEl.addEventListener(
   "click",
@@ -2032,19 +2393,24 @@ powerButtonEl.addEventListener(
       return;
     }
 
+
     const nuovoStato =
       !climatizzatoreAcceso;
+
 
     comandoPowerInCorso =
       true;
 
+
     aggiornaPulsante();
+
 
     try {
 
       await update(
         climaRef,
         {
+
           power:
             nuovoStato,
 
@@ -2052,6 +2418,7 @@ powerButtonEl.addEventListener(
             false
         }
       );
+
 
     } catch (
       errore
@@ -2062,14 +2429,17 @@ powerButtonEl.addEventListener(
         errore
       );
 
+
       alert(
         "Errore durante l'invio del comando."
       );
+
 
     } finally {
 
       comandoPowerInCorso =
         false;
+
 
       aggiornaPulsante();
     }
@@ -2077,9 +2447,9 @@ powerButtonEl.addEventListener(
 );
 
 
-/* ===============================
-   AUTOMATICO
-   =============================== */
+/* =========================================================
+   MODALITÀ AUTOMATICA
+   ========================================================= */
 
 autoModeEl.addEventListener(
   "change",
@@ -2093,27 +2463,34 @@ autoModeEl.addEventListener(
       return;
     }
 
+
     const nuovoStato =
       autoModeEl.checked;
+
 
     const statoPrecedente =
       automaticoAttivo;
 
+
     comandoAutomaticoInCorso =
       true;
 
+
     autoModeEl.disabled =
       true;
+
 
     try {
 
       await update(
         climaRef,
         {
+
           automatico:
             nuovoStato
         }
       );
+
 
     } catch (
       errore
@@ -2124,17 +2501,21 @@ autoModeEl.addEventListener(
         errore
       );
 
+
       autoModeEl.checked =
         statoPrecedente;
+
 
       alert(
         "Errore durante la modifica della modalità automatica."
       );
 
+
     } finally {
 
       comandoAutomaticoInCorso =
         false;
+
 
       autoModeEl.disabled =
         false;
@@ -2143,9 +2524,9 @@ autoModeEl.addEventListener(
 );
 
 
-/* ===============================
-   SOGLIE
-   =============================== */
+/* =========================================================
+   SALVA SOGLIE
+   ========================================================= */
 
 saveSettingsEl.addEventListener(
   "click",
@@ -2159,15 +2540,18 @@ saveSettingsEl.addEventListener(
       return;
     }
 
+
     const sogliaAccensione =
       parseFloat(
         tempOnEl.value
       );
 
+
     const sogliaSpegnimento =
       parseFloat(
         tempOffEl.value
       );
+
 
     if (
       Number.isNaN(
@@ -2182,8 +2566,10 @@ saveSettingsEl.addEventListener(
         "Inserisci due temperature valide."
       );
 
+
       return;
     }
+
 
     if (
       sogliaSpegnimento >
@@ -2194,31 +2580,40 @@ saveSettingsEl.addEventListener(
         "La temperatura di spegnimento non può essere superiore a quella di accensione."
       );
 
+
       return;
     }
+
 
     salvataggioInCorso =
       true;
 
+
     saveSettingsEl.disabled =
       true;
 
+
     saveSettingsEl.textContent =
       "SALVATAGGIO...";
+
 
     try {
 
       await update(
         climaRef,
         {
+
           sogliaAccensione,
+
           sogliaSpegnimento
         }
       );
 
+
       alert(
         "Impostazioni salvate e inviate all'ESP32."
       );
+
 
     } catch (
       errore
@@ -2229,17 +2624,21 @@ saveSettingsEl.addEventListener(
         errore
       );
 
+
       alert(
         "Errore durante il salvataggio."
       );
+
 
     } finally {
 
       salvataggioInCorso =
         false;
 
+
       saveSettingsEl.disabled =
         false;
+
 
       saveSettingsEl.textContent =
         "SALVA IMPOSTAZIONI";
@@ -2248,9 +2647,9 @@ saveSettingsEl.addEventListener(
 );
 
 
-/* ===============================
-   PROGRAMMI EVENTI
-   =============================== */
+/* =========================================================
+   PULSANTE NUOVO PROGRAMMA
+   ========================================================= */
 
 if (
   addProgramButtonEl
@@ -2258,6 +2657,7 @@ if (
 
   addProgramButtonEl.addEventListener(
     "click",
+
     () => {
 
       apriModaleProgramma();
@@ -2266,12 +2666,17 @@ if (
 }
 
 
+/* =========================================================
+   MODIFICA / ELIMINA PROGRAMMA
+   ========================================================= */
+
 if (
   programListEl
 ) {
 
   programListEl.addEventListener(
     "click",
+
     (evento) => {
 
       const bottone =
@@ -2279,15 +2684,22 @@ if (
           "[data-action]"
         );
 
-      if (!bottone) {
+
+      if (
+        !bottone
+      ) {
+
         return;
       }
+
 
       const id =
         bottone.dataset.programId;
 
+
       const azione =
         bottone.dataset.action;
+
 
       if (
         azione === "edit"
@@ -2297,8 +2709,10 @@ if (
           id
         );
 
+
         return;
       }
+
 
       if (
         azione === "delete"
@@ -2313,13 +2727,15 @@ if (
 }
 
 
-/* ===============================
+/* =========================================================
    AVVIO
-   =============================== */
+   ========================================================= */
 
 creaModaleProgramma();
 
+
 mostraTrendStabile();
+
 
 setInterval(
   aggiornaStato,
