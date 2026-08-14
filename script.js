@@ -63,19 +63,9 @@ const storicoRef = ref(
 
 const TEMPO_OFFLINE_MS = 5000;
 
-/*
- * Dopo 5 minuti senza variazioni reali
- * la freccia torna sullo stato stabile.
- */
 const TEMPO_TREND_STABILE_MS =
   5 * 60 * 1000;
 
-/*
- * Grafico storico:
- * l'ESP32 salva circa un campione al minuto.
- * Limitiamo la lettura agli ultimi 720 record e poi
- * mostriamo solo quelli realmente compresi nelle ultime 12 ore.
- */
 const ORE_STORICO = 12;
 const MAX_CAMPIONI_STORICO = 720;
 
@@ -162,43 +152,12 @@ const historyEmptyEl =
 
 let ultimiDati = null;
 
-
-/* =========================================================
-   VARIABILI TREND TEMPERATURA
-   ========================================================= */
-
-/*
- * La temperatura precedente viene memorizzata
- * come numero intero in decimi.
- *
- * Esempio:
- *
- * 24.3 °C = 243
- * 24.4 °C = 244
- */
-
 let temperaturaPrecedenteDecimi = null;
-
-
-/*
- * Stato attuale:
- *
- * stable
- * rising
- * falling
- */
 
 let statoTrend = "stable";
 
-
-/*
- * Momento dell'ultima variazione reale
- * della temperatura.
- */
-
 let ultimoMovimentoTemperatura =
   null;
-
 
 let climatizzatoreAcceso = false;
 let automaticoAttivo = false;
@@ -222,25 +181,20 @@ function mostraTrendStabile() {
 
   statoTrend = "stable";
 
-
   if (!trendArrowEl) {
     return;
   }
 
-
   trendArrowEl.textContent = "•";
-
 
   trendArrowEl.classList.remove(
     "rising",
     "falling"
   );
 
-
   trendArrowEl.classList.add(
     "stable"
   );
-
 
   if (temperatureTrendEl) {
 
@@ -256,25 +210,20 @@ function mostraTrendSalita() {
 
   statoTrend = "rising";
 
-
   if (!trendArrowEl) {
     return;
   }
 
-
   trendArrowEl.textContent = "↑";
-
 
   trendArrowEl.classList.remove(
     "falling",
     "stable"
   );
 
-
   trendArrowEl.classList.add(
     "rising"
   );
-
 
   if (temperatureTrendEl) {
 
@@ -290,25 +239,20 @@ function mostraTrendDiscesa() {
 
   statoTrend = "falling";
 
-
   if (!trendArrowEl) {
     return;
   }
 
-
   trendArrowEl.textContent = "↓";
-
 
   trendArrowEl.classList.remove(
     "rising",
     "stable"
   );
 
-
   trendArrowEl.classList.add(
     "falling"
   );
-
 
   if (temperatureTrendEl) {
 
@@ -324,11 +268,6 @@ function aggiornaTrendTemperatura(
   temperatura
 ) {
 
-  /*
-   * Controlliamo che il dato ricevuto
-   * sia effettivamente un numero.
-   */
-
   if (
     typeof temperatura !== "number" ||
     !Number.isFinite(temperatura)
@@ -337,29 +276,10 @@ function aggiornaTrendTemperatura(
     return;
   }
 
-
-  /*
-   * Convertiamo la temperatura in decimi.
-   *
-   * Questo evita completamente problemi
-   * tipo:
-   *
-   * 24.4 - 24.3 =
-   * 0.099999999999
-   */
-
   const temperaturaAttualeDecimi =
     Math.round(
       temperatura * 10
     );
-
-
-  /*
-   * PRIMA LETTURA
-   *
-   * Non esiste ancora una temperatura
-   * precedente da confrontare.
-   */
 
   if (
     temperaturaPrecedenteDecimi === null
@@ -368,29 +288,17 @@ function aggiornaTrendTemperatura(
     temperaturaPrecedenteDecimi =
       temperaturaAttualeDecimi;
 
-
     ultimoMovimentoTemperatura =
       Date.now();
 
-
     mostraTrendStabile();
-
 
     return;
   }
 
-
   const differenza =
     temperaturaAttualeDecimi -
     temperaturaPrecedenteDecimi;
-
-
-  /*
-   * TEMPERATURA AUMENTATA
-   *
-   * Basta una variazione visualizzata
-   * di almeno +0.1 °C.
-   */
 
   if (
     differenza > 0
@@ -398,25 +306,14 @@ function aggiornaTrendTemperatura(
 
     mostraTrendSalita();
 
-
     ultimoMovimentoTemperatura =
       Date.now();
-
 
     temperaturaPrecedenteDecimi =
       temperaturaAttualeDecimi;
 
-
     return;
   }
-
-
-  /*
-   * TEMPERATURA DIMINUITA
-   *
-   * Basta una variazione visualizzata
-   * di almeno -0.1 °C.
-   */
 
   if (
     differenza < 0
@@ -424,31 +321,14 @@ function aggiornaTrendTemperatura(
 
     mostraTrendDiscesa();
 
-
     ultimoMovimentoTemperatura =
       Date.now();
-
 
     temperaturaPrecedenteDecimi =
       temperaturaAttualeDecimi;
 
-
     return;
   }
-
-
-  /*
-   * TEMPERATURA IDENTICA
-   *
-   * Non cambiamo immediatamente
-   * la freccia.
-   *
-   * Se era ↑ rimane ↑.
-   * Se era ↓ rimane ↓.
-   *
-   * Soltanto dopo 5 minuti senza
-   * nessuna variazione torniamo •.
-   */
 
   if (
     ultimoMovimentoTemperatura !== null
@@ -458,7 +338,6 @@ function aggiornaTrendTemperatura(
       Date.now() -
       ultimoMovimentoTemperatura;
 
-
     if (
       tempoSenzaMovimento >=
       TEMPO_TREND_STABILE_MS
@@ -467,7 +346,6 @@ function aggiornaTrendTemperatura(
       mostraTrendStabile();
     }
   }
-
 
   temperaturaPrecedenteDecimi =
     temperaturaAttualeDecimi;
@@ -485,18 +363,15 @@ function mostraValori(dati) {
       ? dati.temperatura.toFixed(1)
       : "--";
 
-
   umiditaEl.textContent =
     typeof dati.umidita === "number"
       ? dati.umidita.toFixed(0)
       : "--";
 
-
   rssiEl.textContent =
     typeof dati.rssi === "number"
       ? dati.rssi
       : "--";
-
 
   aggiornaTrendTemperatura(
     dati.temperatura
@@ -517,11 +392,9 @@ function mostraOnline() {
   statoEl.textContent =
     "ESP32 online";
 
-
   statusDotEl.classList.add(
     "online"
   );
-
 
   statusDotEl.classList.remove(
     "offline"
@@ -534,16 +407,13 @@ function mostraOffline() {
   statoEl.textContent =
     "ESP32 offline";
 
-
   statusDotEl.classList.remove(
     "online"
   );
 
-
   statusDotEl.classList.add(
     "offline"
   );
-
 
   nascondiValori();
 }
@@ -563,27 +433,21 @@ function aggiornaStato() {
     ultimoAggiornamentoEl.textContent =
       "--";
 
-
     mostraOffline();
-
 
     return;
   }
 
-
   const timestamp =
     ultimiDati.ultimoAggiornamento;
 
-
   const tempoTrascorso =
     Date.now() - timestamp;
-
 
   ultimoAggiornamentoEl.textContent =
     new Date(timestamp).toLocaleString(
       "it-IT"
     );
-
 
   if (
     tempoTrascorso <=
@@ -593,7 +457,6 @@ function aggiornaStato() {
     mostraValori(
       ultimiDati
     );
-
 
     mostraOnline();
 
@@ -615,16 +478,13 @@ function aggiornaPulsante() {
       ? "ACCESO"
       : "SPENTO";
 
-
   powerButtonEl.textContent =
     climatizzatoreAcceso
       ? "SPEGNI"
       : "ACCENDI";
 
-
   powerButtonEl.disabled =
     comandoPowerInCorso;
-
 
   if (
     comandoPowerInCorso
@@ -667,12 +527,9 @@ function normalizzaGiorni(
     false
   ];
 
-
   if (!giorni) {
-
     return risultato;
   }
-
 
   for (
     let i = 0;
@@ -685,7 +542,6 @@ function normalizzaGiorni(
       giorni[String(i)] === true;
   }
 
-
   return risultato;
 }
 
@@ -696,7 +552,6 @@ function creaGiorniFirebase(
 
   const risultato = {};
 
-
   for (
     let i = 0;
     i < 7;
@@ -706,7 +561,6 @@ function creaGiorniFirebase(
     risultato[String(i)] =
       giorni[i] === true;
   }
-
 
   return risultato;
 }
@@ -723,13 +577,10 @@ function orarioValido(
     return false;
   }
 
-
   return /^([01]\d|2[0-3]):[0-5]\d$/.test(
     orario
   );
 }
-
-
 /* =========================================================
    VISUALIZZAZIONE PROGRAMMI
    ========================================================= */
@@ -743,12 +594,10 @@ function renderProgrammi() {
     return;
   }
 
-
   const elementi =
     Object.entries(
       programmi
     );
-
 
   if (
     elementi.length === 0
@@ -761,10 +610,8 @@ function renderProgrammi() {
       </p>
     `;
 
-
     return;
   }
-
 
   programListEl.innerHTML =
     elementi.map(
@@ -774,7 +621,6 @@ function renderProgrammi() {
           normalizzaGiorni(
             programma.giorni
           );
-
 
         const giorniHtml =
           NOMI_GIORNI.map(
@@ -793,17 +639,14 @@ function renderProgrammi() {
             `
           ).join("");
 
-
         const attivo =
           programma.attivo === true;
-
 
         const nome =
           escapeHtml(
             programma.nome ||
             "Programma"
           );
-
 
         const oraAccensione =
           orarioValido(
@@ -812,14 +655,12 @@ function renderProgrammi() {
             ? programma.oraAccensione
             : "--:--";
 
-
         const oraSpegnimento =
           orarioValido(
             programma.oraSpegnimento
           )
             ? programma.oraSpegnimento
             : "--:--";
-
 
         return `
 
@@ -837,7 +678,6 @@ function renderProgrammi() {
                 ${nome}
               </h3>
 
-
               <span class="program-status">
 
                 ${
@@ -850,16 +690,13 @@ function renderProgrammi() {
 
             </div>
 
-
             <div class="program-days">
 
               ${giorniHtml}
 
             </div>
 
-
             <div class="program-times">
-
 
               <div class="program-time on">
 
@@ -873,7 +710,6 @@ function renderProgrammi() {
 
               </div>
 
-
               <div class="program-time off">
 
                 <span class="program-time-label">
@@ -886,12 +722,9 @@ function renderProgrammi() {
 
               </div>
 
-
             </div>
 
-
             <div class="program-actions">
-
 
               <button
                 class="program-action-button edit"
@@ -902,7 +735,6 @@ function renderProgrammi() {
                 MODIFICA
               </button>
 
-
               <button
                 class="program-action-button delete"
                 type="button"
@@ -912,9 +744,7 @@ function renderProgrammi() {
                 ELIMINA
               </button>
 
-
             </div>
-
 
           </article>
         `;
@@ -939,24 +769,19 @@ function creaModaleProgramma() {
     return;
   }
 
-
   const contenitore =
     document.createElement(
       "div"
     );
 
-
   contenitore.id =
     "scheduleModal";
-
 
   contenitore.className =
     "schedule-modal";
 
-
   contenitore.hidden =
     true;
-
 
   contenitore.innerHTML = `
 
@@ -983,7 +808,6 @@ function creaModaleProgramma() {
 
         </div>
 
-
         <button
           id="scheduleCloseButton"
           class="schedule-close"
@@ -994,12 +818,10 @@ function creaModaleProgramma() {
 
       </div>
 
-
       <form
         id="scheduleForm"
         class="schedule-form"
       >
-
 
         <label class="schedule-field">
 
@@ -1018,9 +840,7 @@ function creaModaleProgramma() {
 
         </label>
 
-
         <div class="schedule-time-grid">
-
 
           <label class="schedule-field">
 
@@ -1037,7 +857,6 @@ function creaModaleProgramma() {
 
           </label>
 
-
           <label class="schedule-field">
 
             <span class="schedule-field-label">
@@ -1053,16 +872,13 @@ function creaModaleProgramma() {
 
           </label>
 
-
         </div>
-
 
         <div class="schedule-field">
 
           <span class="schedule-field-label">
             Giorni
           </span>
-
 
           <div class="schedule-day-grid">
 
@@ -1091,7 +907,6 @@ function creaModaleProgramma() {
 
         </div>
 
-
         <div class="schedule-enabled-row">
 
           <div class="schedule-enabled-text">
@@ -1105,7 +920,6 @@ function creaModaleProgramma() {
             </span>
 
           </div>
-
 
           <label class="switch">
 
@@ -1121,7 +935,6 @@ function creaModaleProgramma() {
 
         </div>
 
-
         <div class="schedule-form-actions">
 
           <button
@@ -1131,7 +944,6 @@ function creaModaleProgramma() {
           >
             ANNULLA
           </button>
-
 
           <button
             id="scheduleSaveButton"
@@ -1143,18 +955,14 @@ function creaModaleProgramma() {
 
         </div>
 
-
       </form>
-
 
     </div>
   `;
 
-
   document.body.appendChild(
     contenitore
   );
-
 
   document
     .getElementById(
@@ -1165,7 +973,6 @@ function creaModaleProgramma() {
       chiudiModaleProgramma
     );
 
-
   document
     .getElementById(
       "scheduleCancelButton"
@@ -1175,7 +982,6 @@ function creaModaleProgramma() {
       chiudiModaleProgramma
     );
 
-
   document
     .getElementById(
       "scheduleForm"
@@ -1184,7 +990,6 @@ function creaModaleProgramma() {
       "submit",
       salvaProgramma
     );
-
 
   contenitore.addEventListener(
     "click",
@@ -1213,52 +1018,43 @@ function apriModaleProgramma(
 
   creaModaleProgramma();
 
-
   programmaInModifica =
     id;
-
 
   const modalEl =
     document.getElementById(
       "scheduleModal"
     );
 
-
   const titleEl =
     document.getElementById(
       "scheduleDialogTitle"
     );
-
 
   const nameEl =
     document.getElementById(
       "scheduleName"
     );
 
-
   const timeOnEl =
     document.getElementById(
       "scheduleTimeOn"
     );
-
 
   const timeOffEl =
     document.getElementById(
       "scheduleTimeOff"
     );
 
-
   const enabledEl =
     document.getElementById(
       "scheduleEnabled"
     );
 
-
   const checkboxes =
     modalEl.querySelectorAll(
       "[data-day]"
     );
-
 
   if (
     id &&
@@ -1268,14 +1064,11 @@ function apriModaleProgramma(
     const programma =
       programmi[id];
 
-
     titleEl.textContent =
       "Modifica programma";
 
-
     nameEl.value =
       programma.nome || "";
-
 
     timeOnEl.value =
       orarioValido(
@@ -1284,7 +1077,6 @@ function apriModaleProgramma(
         ? programma.oraAccensione
         : "";
 
-
     timeOffEl.value =
       orarioValido(
         programma.oraSpegnimento
@@ -1292,16 +1084,13 @@ function apriModaleProgramma(
         ? programma.oraSpegnimento
         : "";
 
-
     enabledEl.checked =
       programma.attivo === true;
-
 
     const giorni =
       normalizzaGiorni(
         programma.giorni
       );
-
 
     checkboxes.forEach(
       (checkbox) => {
@@ -1311,27 +1100,22 @@ function apriModaleProgramma(
             checkbox.dataset.day
           );
 
-
         checkbox.checked =
           giorni[indice];
       }
     );
-
 
   } else {
 
     titleEl.textContent =
       "Nuovo programma";
 
-
     nameEl.value = "";
     timeOnEl.value = "";
     timeOffEl.value = "";
 
-
     enabledEl.checked =
       true;
-
 
     checkboxes.forEach(
       (checkbox) => {
@@ -1341,7 +1125,6 @@ function apriModaleProgramma(
       }
     );
   }
-
 
   modalEl.hidden =
     false;
@@ -1359,7 +1142,6 @@ function chiudiModaleProgramma() {
       "scheduleModal"
     );
 
-
   if (
     modalEl
   ) {
@@ -1367,7 +1149,6 @@ function chiudiModaleProgramma() {
     modalEl.hidden =
       true;
   }
-
 
   programmaInModifica =
     null;
@@ -1384,7 +1165,6 @@ async function salvaProgramma(
 
   evento.preventDefault();
 
-
   if (
     salvataggioProgrammaInCorso
   ) {
@@ -1392,48 +1172,39 @@ async function salvaProgramma(
     return;
   }
 
-
   const nameEl =
     document.getElementById(
       "scheduleName"
     );
-
 
   const timeOnEl =
     document.getElementById(
       "scheduleTimeOn"
     );
 
-
   const timeOffEl =
     document.getElementById(
       "scheduleTimeOff"
     );
-
 
   const enabledEl =
     document.getElementById(
       "scheduleEnabled"
     );
 
-
   const saveButtonEl =
     document.getElementById(
       "scheduleSaveButton"
     );
 
-
   const nome =
     nameEl.value.trim();
-
 
   const oraAccensione =
     timeOnEl.value;
 
-
   const oraSpegnimento =
     timeOffEl.value;
-
 
   if (!nome) {
 
@@ -1441,10 +1212,8 @@ async function salvaProgramma(
       "Inserisci un nome per il programma."
     );
 
-
     return;
   }
-
 
   if (
     !orarioValido(
@@ -1459,16 +1228,13 @@ async function salvaProgramma(
       "Inserisci gli orari di accensione e spegnimento."
     );
 
-
     return;
   }
-
 
   const checkboxes =
     document.querySelectorAll(
       "#scheduleModal [data-day]"
     );
-
 
   const giorni = [
     false,
@@ -1480,7 +1246,6 @@ async function salvaProgramma(
     false
   ];
 
-
   checkboxes.forEach(
     (checkbox) => {
 
@@ -1489,12 +1254,10 @@ async function salvaProgramma(
           checkbox.dataset.day
         );
 
-
       giorni[indice] =
         checkbox.checked;
     }
   );
-
 
   if (
     !giorni.some(
@@ -1506,10 +1269,8 @@ async function salvaProgramma(
       "Seleziona almeno un giorno."
     );
 
-
     return;
   }
-
 
   const datiProgramma = {
 
@@ -1528,18 +1289,14 @@ async function salvaProgramma(
     oraSpegnimento
   };
 
-
   salvataggioProgrammaInCorso =
     true;
-
 
   saveButtonEl.disabled =
     true;
 
-
   saveButtonEl.textContent =
     "SALVATAGGIO...";
-
 
   try {
 
@@ -1556,12 +1313,10 @@ async function salvaProgramma(
           `dispositivi/cameretta/programmi/${programmaInModifica}`
         );
 
-
       await set(
         programmaRef,
         datiProgramma
       );
-
 
     } else {
 
@@ -1570,16 +1325,13 @@ async function salvaProgramma(
           programmiRef
         );
 
-
       await set(
         nuovoProgrammaRef,
         datiProgramma
       );
     }
 
-
     chiudiModaleProgramma();
-
 
   } catch (
     errore
@@ -1590,21 +1342,17 @@ async function salvaProgramma(
       errore
     );
 
-
     alert(
       "Errore durante il salvataggio del programma."
     );
-
 
   } finally {
 
     salvataggioProgrammaInCorso =
       false;
 
-
     saveButtonEl.disabled =
       false;
-
 
     saveButtonEl.textContent =
       "SALVA PROGRAMMA";
@@ -1623,7 +1371,6 @@ async function eliminaProgramma(
   const programma =
     programmi[id];
 
-
   if (
     !programma
   ) {
@@ -1631,12 +1378,10 @@ async function eliminaProgramma(
     return;
   }
 
-
   const conferma =
     confirm(
       `Vuoi eliminare il programma "${programma.nome || "Programma"}"?`
     );
-
 
   if (
     !conferma
@@ -1644,7 +1389,6 @@ async function eliminaProgramma(
 
     return;
   }
-
 
   try {
 
@@ -1654,11 +1398,9 @@ async function eliminaProgramma(
         `dispositivi/cameretta/programmi/${id}`
       );
 
-
     await remove(
       programmaRef
     );
-
 
   } catch (
     errore
@@ -1669,20 +1411,19 @@ async function eliminaProgramma(
       errore
     );
 
-
     alert(
       "Errore durante l'eliminazione del programma."
     );
   }
 }
-
-
 /* =========================================================
    STORICO - GRAFICO ULTIME 12 ORE
    ========================================================= */
 
 function numeroValido(valore) {
-  const numero = Number(valore);
+
+  const numero =
+    Number(valore);
 
   return Number.isFinite(numero)
     ? numero
@@ -1691,6 +1432,7 @@ function numeroValido(valore) {
 
 
 function arrotondaDecimo(valore) {
+
   return Math.round(
     Number(valore) * 10
   ) / 10;
@@ -1698,6 +1440,7 @@ function arrotondaDecimo(valore) {
 
 
 function formattaTemperaturaAsse(valore) {
+
   return (
     Number(valore)
       .toFixed(1)
@@ -1708,6 +1451,7 @@ function formattaTemperaturaAsse(valore) {
 
 
 function formattaOraStorico(timestamp) {
+
   return new Date(timestamp)
     .toLocaleTimeString(
       "it-IT",
@@ -1723,27 +1467,24 @@ function calcolaLimitiTemperatura(punti) {
 
   const temperature =
     punti.map(
-      (punto) => punto.temperatura
+      (punto) =>
+        punto.temperatura
     );
-
 
   let minimo =
     Math.floor(
       Math.min(...temperature) * 10
     ) / 10;
 
-
   let massimo =
     Math.ceil(
       Math.max(...temperature) * 10
     ) / 10;
 
+  if (
+    minimo === massimo
+  ) {
 
-  /*
-   * Se tutti i campioni hanno la stessa temperatura,
-   * allarghiamo leggermente l'asse per evitare un grafico piatto.
-   */
-  if (minimo === massimo) {
     minimo =
       arrotondaDecimo(
         minimo - 0.2
@@ -1755,7 +1496,6 @@ function calcolaLimitiTemperatura(punti) {
       );
   }
 
-
   return {
     minimo,
     massimo
@@ -1763,15 +1503,17 @@ function calcolaLimitiTemperatura(punti) {
 }
 
 
-function aggiornaGraficoStorico(punti) {
+function aggiornaGraficoStorico(
+  punti
+) {
 
   if (
     !historyChartEl ||
     !historySampleCountEl
   ) {
+
     return;
   }
-
 
   historySampleCountEl.textContent =
     `${punti.length} ${
@@ -1780,29 +1522,35 @@ function aggiornaGraficoStorico(punti) {
         : "campioni"
     }`;
 
+  if (
+    historyEmptyEl
+  ) {
 
-  if (historyEmptyEl) {
     historyEmptyEl.hidden =
       punti.length > 0;
   }
 
+  if (
+    punti.length === 0
+  ) {
 
-  if (punti.length === 0) {
+    if (
+      graficoStorico
+    ) {
 
-    if (graficoStorico) {
       graficoStorico.destroy();
-      graficoStorico = null;
+
+      graficoStorico =
+        null;
     }
 
     return;
   }
 
-
   const limitiTemperatura =
     calcolaLimitiTemperatura(
       punti
     );
-
 
   const datiTemperatura =
     punti.map(
@@ -1811,7 +1559,6 @@ function aggiornaGraficoStorico(punti) {
         y: punto.temperatura
       })
     );
-
 
   const datiUmidita =
     punti.map(
@@ -1822,106 +1569,186 @@ function aggiornaGraficoStorico(punti) {
     );
 
 
-  const primoTimestamp =
-    punti[0].timestamp;
+  /* ============================================
+     ASSE X SEMPRE SULLE ULTIME 12 ORE
+     ============================================ */
 
+  const adesso =
+    Date.now();
 
-  const ultimoTimestamp =
-    punti[
-      punti.length - 1
-    ].timestamp;
+  const dodiciOreFa =
+    adesso -
+    ORE_STORICO *
+      60 *
+      60 *
+      1000;
 
 
   const configurazione = {
 
-    type: "line",
+    type:
+      "line",
 
     data: {
 
       datasets: [
 
         {
-          label: "Temperatura °C",
-          data: datiTemperatura,
-          yAxisID: "yTemperatura",
-          borderColor: "#ff7d6e",
-          backgroundColor: "#ff7d6e",
-          borderWidth: 2.5,
-          pointRadius: 0,
-          pointHoverRadius: 4,
-          stepped: true,
-          spanGaps: true
+          label:
+            "Temperatura °C",
+
+          data:
+            datiTemperatura,
+
+          yAxisID:
+            "yTemperatura",
+
+          borderColor:
+            "#ff7d6e",
+
+          backgroundColor:
+            "#ff7d6e",
+
+          borderWidth:
+            2.5,
+
+          pointRadius:
+            0,
+
+          pointHoverRadius:
+            4,
+
+          stepped:
+            true,
+
+          spanGaps:
+            true
         },
 
         {
-          label: "Umidità %",
-          data: datiUmidita,
-          yAxisID: "yUmidita",
-          borderColor: "#5aaeff",
-          backgroundColor: "#5aaeff",
-          borderWidth: 2,
-          pointRadius: 0,
-          pointHoverRadius: 4,
-          tension: 0.15,
-          spanGaps: true
-        }
+          label:
+            "Umidità %",
 
+          data:
+            datiUmidita,
+
+          yAxisID:
+            "yUmidita",
+
+          borderColor:
+            "#5aaeff",
+
+          backgroundColor:
+            "#5aaeff",
+
+          borderWidth:
+            2,
+
+          pointRadius:
+            0,
+
+          pointHoverRadius:
+            4,
+
+          tension:
+            0.15,
+
+          spanGaps:
+            true
+        }
       ]
     },
 
+
     options: {
 
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: false,
-      normalized: true,
+      responsive:
+        true,
+
+      maintainAspectRatio:
+        false,
+
+      animation:
+        false,
+
+      normalized:
+        true,
 
       interaction: {
-        mode: "index",
-        intersect: false
+
+        mode:
+          "index",
+
+        intersect:
+          false
       },
+
 
       plugins: {
 
         legend: {
-          position: "top",
+
+          position:
+            "top",
 
           labels: {
-            color: "#dce3f8",
-            usePointStyle: true,
-            boxWidth: 10,
-            boxHeight: 10,
-            padding: 18
+
+            color:
+              "#dce3f8",
+
+            usePointStyle:
+              true,
+
+            boxWidth:
+              10,
+
+            boxHeight:
+              10,
+
+            padding:
+              18
           }
         },
+
 
         tooltip: {
 
           callbacks: {
 
-            title: (elementi) => {
+
+            title: (
+              elementi
+            ) => {
 
               if (
                 !elementi ||
                 elementi.length === 0
               ) {
+
                 return "";
               }
 
               const timestamp =
-                elementi[0].parsed.x;
+                elementi[0]
+                  .parsed
+                  .x;
 
-              return new Date(timestamp)
+              return new Date(
+                timestamp
+              )
                 .toLocaleString(
                   "it-IT"
                 );
             },
 
-            label: (contesto) => {
+
+            label: (
+              contesto
+            ) => {
 
               if (
                 contesto.dataset.yAxisID ===
-                  "yTemperatura"
+                "yTemperatura"
               ) {
 
                 return (
@@ -1930,7 +1757,10 @@ function aggiornaGraficoStorico(punti) {
                     contesto.parsed.y
                   )
                     .toFixed(1)
-                    .replace(".", ",") +
+                    .replace(
+                      ".",
+                      ","
+                    ) +
                   " °C"
                 );
               }
@@ -1948,106 +1778,161 @@ function aggiornaGraficoStorico(punti) {
         }
       },
 
+
       scales: {
+
 
         x: {
 
-          type: "linear",
+          type:
+            "linear",
 
-          min: primoTimestamp,
-          max: ultimoTimestamp,
+          min:
+            dodiciOreFa,
+
+          max:
+            adesso,
 
           grid: {
-            color: "rgba(255,255,255,0.06)"
+
+            color:
+              "rgba(255,255,255,0.06)"
           },
 
           border: {
-            color: "rgba(255,255,255,0.12)"
+
+            color:
+              "rgba(255,255,255,0.12)"
           },
 
           ticks: {
-            color: "#8f9ab8",
-            maxTicksLimit: 7,
 
-            callback: (valore) =>
-              formattaOraStorico(
-                Number(valore)
-              )
+            color:
+              "#8f9ab8",
+
+            maxTicksLimit:
+              7,
+
+            callback:
+              (valore) =>
+                formattaOraStorico(
+                  Number(valore)
+                )
           }
         },
+
 
         yTemperatura: {
 
-          type: "linear",
-          position: "left",
+          type:
+            "linear",
+
+          position:
+            "left",
 
           min:
-            limitiTemperatura.minimo,
+            limitiTemperatura
+              .minimo,
 
           max:
-            limitiTemperatura.massimo,
+            limitiTemperatura
+              .massimo,
 
           grid: {
-            color: "rgba(255,255,255,0.07)"
+
+            color:
+              "rgba(255,255,255,0.07)"
           },
 
           border: {
-            color: "rgba(255,125,110,0.38)"
+
+            color:
+              "rgba(255,125,110,0.38)"
           },
 
           title: {
-            display: true,
-            text: "Temperatura °C",
-            color: "#ff9589"
+
+            display:
+              true,
+
+            text:
+              "Temperatura °C",
+
+            color:
+              "#ff9589"
           },
 
           ticks: {
-            color: "#ff9589",
 
-            /*
-             * QUESTA È LA CORREZIONE DEI NUMERI
-             * tipo 30.200000000000003.
-             */
-            stepSize: 0.1,
-            precision: 1,
+            color:
+              "#ff9589",
 
-            callback: (valore) =>
-              formattaTemperaturaAsse(
-                valore
-              )
+            stepSize:
+              0.1,
+
+            precision:
+              1,
+
+            callback:
+              (valore) =>
+                formattaTemperaturaAsse(
+                  valore
+                )
           }
         },
 
+
         yUmidita: {
 
-          type: "linear",
-          position: "right",
+          type:
+            "linear",
 
-          min: 0,
-          max: 100,
+          position:
+            "right",
+
+          min:
+            0,
+
+          max:
+            100,
 
           grid: {
-            drawOnChartArea: false
+
+            drawOnChartArea:
+              false
           },
 
           border: {
-            color: "rgba(90,174,255,0.38)"
+
+            color:
+              "rgba(90,174,255,0.38)"
           },
 
           title: {
-            display: true,
-            text: "Umidità %",
-            color: "#83c4ff"
+
+            display:
+              true,
+
+            text:
+              "Umidità %",
+
+            color:
+              "#83c4ff"
           },
 
           ticks: {
-            color: "#83c4ff",
-            stepSize: 10,
 
-            callback: (valore) =>
-              `${Math.round(
-                Number(valore)
-              )}%`
+            color:
+              "#83c4ff",
+
+            stepSize:
+              10,
+
+            callback:
+              (valore) =>
+                `${Math.round(
+                  Number(valore)
+                )}%`
           }
         }
       }
@@ -2055,7 +1940,10 @@ function aggiornaGraficoStorico(punti) {
   };
 
 
-  if (graficoStorico) {
+  if (
+    graficoStorico
+  ) {
+
     graficoStorico.destroy();
   }
 
@@ -2068,11 +1956,10 @@ function aggiornaGraficoStorico(punti) {
 }
 
 
-/*
- * Firebase push genera chiavi ordinate temporalmente.
- * limitToLast(720) evita di scaricare tutto lo storico,
- * che cresce di circa 1440 record al giorno.
- */
+/* =========================================================
+   LETTURA STORICO FIREBASE
+   ========================================================= */
+
 const storicoQuery =
   query(
     storicoRef,
@@ -2089,7 +1976,8 @@ onValue(
   (snapshot) => {
 
     const dati =
-      snapshot.val() || {};
+      snapshot.val() ||
+      {};
 
 
     const limiteTemporale =
@@ -2101,7 +1989,9 @@ onValue(
 
 
     const punti =
-      Object.values(dati)
+      Object.values(
+        dati
+      )
 
         .map(
           (elemento) => {
@@ -2109,8 +1999,9 @@ onValue(
             if (
               !elemento ||
               typeof elemento !==
-                "object"
+              "object"
             ) {
+
               return null;
             }
 
@@ -2138,16 +2029,20 @@ onValue(
               temperatura === null ||
               umidita === null
             ) {
+
               return null;
             }
 
 
             return {
+
               timestamp,
+
               temperatura:
                 arrotondaDecimo(
                   temperatura
                 ),
+
               umidita:
                 arrotondaDecimo(
                   umidita
@@ -2175,6 +2070,7 @@ onValue(
     );
   },
 
+
   (errore) => {
 
     console.error(
@@ -2183,21 +2079,27 @@ onValue(
     );
 
 
-    if (historySampleCountEl) {
+    if (
+      historySampleCountEl
+    ) {
+
       historySampleCountEl.textContent =
         "Errore storico";
     }
 
 
-    if (historyEmptyEl) {
-      historyEmptyEl.hidden = false;
+    if (
+      historyEmptyEl
+    ) {
+
+      historyEmptyEl.hidden =
+        false;
+
       historyEmptyEl.textContent =
         "Impossibile leggere lo storico da Firebase.";
     }
   }
 );
-
-
 /* =========================================================
    LETTURA SENSORI FIREBASE
    ========================================================= */
@@ -2218,13 +2120,10 @@ onValue(
       erroreEl.hidden =
         false;
 
-
       erroreEl.textContent =
         "Nessun dato disponibile nel database.";
 
-
       aggiornaStato();
-
 
       return;
     }
@@ -2232,7 +2131,6 @@ onValue(
 
     erroreEl.hidden =
       true;
-
 
     aggiornaStato();
   },
@@ -2245,18 +2143,14 @@ onValue(
       errore
     );
 
-
     erroreEl.hidden =
       false;
-
 
     erroreEl.textContent =
       "Impossibile leggere i dati da Firebase.";
 
-
     ultimiDati =
       null;
-
 
     aggiornaStato();
   }
@@ -2283,25 +2177,19 @@ onValue(
       climatizzatoreAcceso =
         false;
 
-
       automaticoAttivo =
         false;
-
 
       autoModeEl.checked =
         false;
 
-
       tempOnEl.value =
         26;
-
 
       tempOffEl.value =
         24;
 
-
       aggiornaPulsante();
-
 
       return;
     }
@@ -2310,14 +2198,11 @@ onValue(
     climatizzatoreAcceso =
       dati.power === true;
 
-
     automaticoAttivo =
       dati.automatico === true;
 
-
     autoModeEl.checked =
       automaticoAttivo;
-
 
     tempOnEl.value =
       typeof dati.sogliaAccensione ===
@@ -2325,13 +2210,11 @@ onValue(
         ? dati.sogliaAccensione
         : 26;
 
-
     tempOffEl.value =
       typeof dati.sogliaSpegnimento ===
       "number"
         ? dati.sogliaSpegnimento
         : 24;
-
 
     aggiornaPulsante();
   }
@@ -2350,7 +2233,6 @@ onValue(
     programmi =
       snapshot.val() || {};
 
-
     renderProgrammi();
   },
 
@@ -2361,7 +2243,6 @@ onValue(
       "Errore lettura programmi:",
       errore
     );
-
 
     if (
       programListEl
@@ -2429,7 +2310,6 @@ powerButtonEl.addEventListener(
         errore
       );
 
-
       alert(
         "Errore durante l'invio del comando."
       );
@@ -2439,7 +2319,6 @@ powerButtonEl.addEventListener(
 
       comandoPowerInCorso =
         false;
-
 
       aggiornaPulsante();
     }
@@ -2501,10 +2380,8 @@ autoModeEl.addEventListener(
         errore
       );
 
-
       autoModeEl.checked =
         statoPrecedente;
-
 
       alert(
         "Errore durante la modifica della modalità automatica."
@@ -2515,7 +2392,6 @@ autoModeEl.addEventListener(
 
       comandoAutomaticoInCorso =
         false;
-
 
       autoModeEl.disabled =
         false;
@@ -2566,7 +2442,6 @@ saveSettingsEl.addEventListener(
         "Inserisci due temperature valide."
       );
 
-
       return;
     }
 
@@ -2579,7 +2454,6 @@ saveSettingsEl.addEventListener(
       alert(
         "La temperatura di spegnimento non può essere superiore a quella di accensione."
       );
-
 
       return;
     }
@@ -2624,7 +2498,6 @@ saveSettingsEl.addEventListener(
         errore
       );
 
-
       alert(
         "Errore durante il salvataggio."
       );
@@ -2635,10 +2508,8 @@ saveSettingsEl.addEventListener(
       salvataggioInCorso =
         false;
 
-
       saveSettingsEl.disabled =
         false;
-
 
       saveSettingsEl.textContent =
         "SALVA IMPOSTAZIONI";
@@ -2709,7 +2580,6 @@ if (
           id
         );
 
-
         return;
       }
 
@@ -2733,9 +2603,7 @@ if (
 
 creaModaleProgramma();
 
-
 mostraTrendStabile();
-
 
 setInterval(
   aggiornaStato,
