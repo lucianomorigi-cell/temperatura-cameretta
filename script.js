@@ -528,6 +528,7 @@ function normalizzaGiorni(
   ];
 
   if (!giorni) {
+
     return risultato;
   }
 
@@ -1463,38 +1464,40 @@ function formattaOraStorico(timestamp) {
 }
 
 
+/* =========================================================
+   CALCOLO SCALA TEMPERATURA
+
+   Mantiene 1 °C di spazio sotto il valore minimo
+   e 1 °C di spazio sopra il valore massimo.
+   ========================================================= */
+
 function calcolaLimitiTemperatura(punti) {
 
   const temperature =
     punti.map(
-      (punto) =>
-        punto.temperatura
+      (punto) => punto.temperatura
     );
 
-  let minimo =
+
+  const temperaturaMinima =
+    Math.min(...temperature);
+
+
+  const temperaturaMassima =
+    Math.max(...temperature);
+
+
+  const minimo =
     Math.floor(
-      Math.min(...temperature) * 10
+      (temperaturaMinima - 1.0) * 10
     ) / 10;
 
-  let massimo =
+
+  const massimo =
     Math.ceil(
-      Math.max(...temperature) * 10
+      (temperaturaMassima + 1.0) * 10
     ) / 10;
 
-  if (
-    minimo === massimo
-  ) {
-
-    minimo =
-      arrotondaDecimo(
-        minimo - 0.2
-      );
-
-    massimo =
-      arrotondaDecimo(
-        massimo + 0.2
-      );
-  }
 
   return {
     minimo,
@@ -1515,12 +1518,14 @@ function aggiornaGraficoStorico(
     return;
   }
 
+
   historySampleCountEl.textContent =
     `${punti.length} ${
       punti.length === 1
         ? "campione"
         : "campioni"
     }`;
+
 
   if (
     historyEmptyEl
@@ -1529,6 +1534,7 @@ function aggiornaGraficoStorico(
     historyEmptyEl.hidden =
       punti.length > 0;
   }
+
 
   if (
     punti.length === 0
@@ -1547,10 +1553,12 @@ function aggiornaGraficoStorico(
     return;
   }
 
+
   const limitiTemperatura =
     calcolaLimitiTemperatura(
       punti
     );
+
 
   const datiTemperatura =
     punti.map(
@@ -1559,6 +1567,7 @@ function aggiornaGraficoStorico(
         y: punto.temperatura
       })
     );
+
 
   const datiUmidita =
     punti.map(
@@ -1569,12 +1578,14 @@ function aggiornaGraficoStorico(
     );
 
 
-  /* ============================================
-     ASSE X SEMPRE SULLE ULTIME 12 ORE
-     ============================================ */
+  /*
+   * L'asse X rappresenta SEMPRE
+   * le ultime 12 ore rispetto al momento attuale.
+   */
 
   const adesso =
     Date.now();
+
 
   const dodiciOreFa =
     adesso -
@@ -2120,10 +2131,13 @@ onValue(
       erroreEl.hidden =
         false;
 
+
       erroreEl.textContent =
         "Nessun dato disponibile nel database.";
 
+
       aggiornaStato();
+
 
       return;
     }
@@ -2131,6 +2145,7 @@ onValue(
 
     erroreEl.hidden =
       true;
+
 
     aggiornaStato();
   },
@@ -2143,14 +2158,18 @@ onValue(
       errore
     );
 
+
     erroreEl.hidden =
       false;
+
 
     erroreEl.textContent =
       "Impossibile leggere i dati da Firebase.";
 
+
     ultimiDati =
       null;
+
 
     aggiornaStato();
   }
@@ -2177,19 +2196,25 @@ onValue(
       climatizzatoreAcceso =
         false;
 
+
       automaticoAttivo =
         false;
+
 
       autoModeEl.checked =
         false;
 
+
       tempOnEl.value =
         26;
+
 
       tempOffEl.value =
         24;
 
+
       aggiornaPulsante();
+
 
       return;
     }
@@ -2198,11 +2223,14 @@ onValue(
     climatizzatoreAcceso =
       dati.power === true;
 
+
     automaticoAttivo =
       dati.automatico === true;
 
+
     autoModeEl.checked =
       automaticoAttivo;
+
 
     tempOnEl.value =
       typeof dati.sogliaAccensione ===
@@ -2210,11 +2238,13 @@ onValue(
         ? dati.sogliaAccensione
         : 26;
 
+
     tempOffEl.value =
       typeof dati.sogliaSpegnimento ===
       "number"
         ? dati.sogliaSpegnimento
         : 24;
+
 
     aggiornaPulsante();
   }
@@ -2233,6 +2263,7 @@ onValue(
     programmi =
       snapshot.val() || {};
 
+
     renderProgrammi();
   },
 
@@ -2243,6 +2274,7 @@ onValue(
       "Errore lettura programmi:",
       errore
     );
+
 
     if (
       programListEl
@@ -2310,6 +2342,7 @@ powerButtonEl.addEventListener(
         errore
       );
 
+
       alert(
         "Errore durante l'invio del comando."
       );
@@ -2319,6 +2352,7 @@ powerButtonEl.addEventListener(
 
       comandoPowerInCorso =
         false;
+
 
       aggiornaPulsante();
     }
@@ -2380,8 +2414,10 @@ autoModeEl.addEventListener(
         errore
       );
 
+
       autoModeEl.checked =
         statoPrecedente;
+
 
       alert(
         "Errore durante la modifica della modalità automatica."
@@ -2392,6 +2428,7 @@ autoModeEl.addEventListener(
 
       comandoAutomaticoInCorso =
         false;
+
 
       autoModeEl.disabled =
         false;
@@ -2442,6 +2479,7 @@ saveSettingsEl.addEventListener(
         "Inserisci due temperature valide."
       );
 
+
       return;
     }
 
@@ -2454,6 +2492,7 @@ saveSettingsEl.addEventListener(
       alert(
         "La temperatura di spegnimento non può essere superiore a quella di accensione."
       );
+
 
       return;
     }
@@ -2498,6 +2537,7 @@ saveSettingsEl.addEventListener(
         errore
       );
 
+
       alert(
         "Errore durante il salvataggio."
       );
@@ -2508,8 +2548,10 @@ saveSettingsEl.addEventListener(
       salvataggioInCorso =
         false;
 
+
       saveSettingsEl.disabled =
         false;
+
 
       saveSettingsEl.textContent =
         "SALVA IMPOSTAZIONI";
@@ -2580,6 +2622,7 @@ if (
           id
         );
 
+
         return;
       }
 
@@ -2603,7 +2646,9 @@ if (
 
 creaModaleProgramma();
 
+
 mostraTrendStabile();
+
 
 setInterval(
   aggiornaStato,
