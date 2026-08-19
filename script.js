@@ -61,7 +61,7 @@ const storicoRef = ref(
    CONFIGURAZIONE
    ========================================================= */
 
-const TEMPO_OFFLINE_MS = 5000;
+const TEMPO_OFFLINE_MS = 20000;
 
 const TEMPO_TREND_STABILE_MS =
   5 * 60 * 1000;
