@@ -1944,10 +1944,7 @@ if (
 sogliaSpegnimento >
 sogliaAccensione
 ) {
-alert(
-"La temperatura di spegnimento non può essere superiore a quella di
-accensione."
-);
+alert("La temperatura di spegnimento non può essere superiore a quella di accensione.");
 return;
 }
 salvataggioInCorso =
