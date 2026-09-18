@@ -1,9 +1,7 @@
 <!DOCTYPE html>
-
 <html lang="it">
 
 <head>
-
   <meta charset="UTF-8">
 
   <meta
@@ -15,8 +13,7 @@
 
   <title>Camera Ascanio</title>
 
-  <link rel="stylesheet" href="./style.css?v=8">
-
+  <link rel="stylesheet" href="./style.css?v=10">
 </head>
 
 <body>
@@ -184,10 +181,30 @@
       <div class="details">
 
         <p>
+
+          Segnale Wi-Fi:
+
+          <strong>
+
+            <span id="rssi">
+              --
+            </span>
+
+            dBm
+
+          </strong>
+
+        </p>
+
+
+        <p>
+
           Ultimo dato ricevuto:
+
           <strong id="ultimoAggiornamento">
             --
           </strong>
+
         </p>
 
       </div>
@@ -339,9 +356,11 @@
 
 
       <p class="automatic-description">
+
         Il climatizzatore si accende e si spegne
         automaticamente in base alle temperature
         impostate.
+
       </p>
 
 
@@ -363,7 +382,7 @@
           <span class="threshold-content">
 
             <span class="threshold-label">
-              Accendi sopra
+              Accendi sotto
             </span>
 
 
@@ -375,7 +394,7 @@
                 step="0.5"
                 min="15"
                 max="35"
-                value="26"
+                value="19"
                 inputmode="decimal"
               >
 
@@ -405,7 +424,7 @@
           <span class="threshold-content">
 
             <span class="threshold-label">
-              Spegni sotto
+              Spegni sopra
             </span>
 
 
@@ -417,7 +436,7 @@
                 step="0.5"
                 min="15"
                 max="35"
-                value="24"
+                value="21"
                 inputmode="decimal"
               >
 
@@ -471,8 +490,10 @@
 
 
       <p class="automatic-description">
+
         Programma gli orari di accensione e
         spegnimento del climatizzatore.
+
       </p>
 
 
@@ -514,7 +535,7 @@
 
   <script
     type="module"
-    src="./script.js?v=8"
+    src="./script.js?v=10"
   ></script>
 
 </body>
